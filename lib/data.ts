@@ -50,7 +50,7 @@ export async function listWorkspacesForUser(): Promise<WorkspaceSummary[]> {
 
   const { data, error } = await supabase
     .from("workspace_members")
-    .select("role, workspace_id, workspaces(id, name, slug)")
+    .select("role, workspace_id, workspaces(id, name, slug, is_shared)")
     .eq("user_id", userId);
 
   if (error || !data) {
@@ -83,6 +83,7 @@ export async function listWorkspacesForUser(): Promise<WorkspaceSummary[]> {
         id: workspaceId,
         name: String(workspace?.name ?? "Workspace"),
         slug: String(workspace?.slug ?? "workspace"),
+        isShared: Boolean(workspace?.is_shared ?? false),
         role: String(entry.role ?? "member"),
         totalPhotos: totalPhotos ?? 0,
         clustersCount: clustersCount ?? 0,
@@ -91,7 +92,13 @@ export async function listWorkspacesForUser(): Promise<WorkspaceSummary[]> {
     })
   );
 
-  return summaries;
+  return summaries.sort((left, right) => {
+    if (left.isShared !== right.isShared) {
+      return left.isShared ? -1 : 1;
+    }
+
+    return left.name.localeCompare(right.name, "ru");
+  });
 }
 
 export async function getWorkspaceOverview(
@@ -107,7 +114,7 @@ export async function getWorkspaceOverview(
     { count: uploadCount },
     { data: clusters }
   ] = await Promise.all([
-    supabase.from("workspaces").select("id, name, slug").eq("id", workspaceId).single(),
+    supabase.from("workspaces").select("id, name, slug, is_shared").eq("id", workspaceId).single(),
     supabase.from("photos").select("*", { count: "exact", head: true }).eq("workspace_id", workspaceId),
     supabase
       .from("person_clusters")
@@ -163,6 +170,7 @@ export async function getWorkspaceOverview(
     id: String(workspace.id),
     name: String(workspace.name),
     slug: String(workspace.slug),
+    isShared: Boolean(workspace.is_shared ?? false),
     totalPhotos: totalPhotos ?? 0,
     peopleCount: peopleCount ?? 0,
     uploadCount: uploadCount ?? 0,

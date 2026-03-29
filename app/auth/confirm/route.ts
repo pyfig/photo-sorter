@@ -2,6 +2,7 @@ import { type EmailOtpType } from "@supabase/supabase-js";
 import { type NextRequest, NextResponse } from "next/server";
 
 import { hasRequiredWebEnv } from "@/lib/env";
+import { ensureSharedWorkspaceAccess } from "@/lib/shared-workspace";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { normalizeNextPath } from "@/lib/utils";
 
@@ -63,6 +64,17 @@ export async function GET(request: NextRequest) {
       return redirectToLogin(request, error.message);
     }
 
+    try {
+      await ensureSharedWorkspaceAccess(supabase);
+    } catch (bootstrapError) {
+      return redirectToLogin(
+        request,
+        bootstrapError instanceof Error
+          ? bootstrapError.message
+          : "Не удалось подготовить общий workspace."
+      );
+    }
+
     return NextResponse.redirect(redirectTarget);
   }
 
@@ -77,6 +89,17 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     return redirectToLogin(request, error.message);
+  }
+
+  try {
+    await ensureSharedWorkspaceAccess(supabase);
+  } catch (bootstrapError) {
+    return redirectToLogin(
+      request,
+      bootstrapError instanceof Error
+        ? bootstrapError.message
+        : "Не удалось подготовить общий workspace."
+    );
   }
 
   return NextResponse.redirect(redirectTarget);

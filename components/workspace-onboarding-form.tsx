@@ -15,36 +15,41 @@ export function WorkspaceOnboardingForm() {
 
   return (
     <section className="panel">
-      <h2>Создать workspace</h2>
+      <h2>Создайте новый workspace</h2>
       <p className="muted">
-        Первый workspace нужен для изоляции данных, upload batches и processing jobs.
+        Общий набор уже доступен сразу после входа. Здесь можно создать отдельный workspace
+        под клиента, событие или конкретную фотосъёмку.
       </p>
 
       <form action={action} className="form-grid">
         <label className="field">
-          <span>Название</span>
+          <span>Название проекта</span>
           <input
             defaultValue=""
             name="name"
-            placeholder="TechCommunity Fest Moscow"
+            placeholder="Корпоратив Acme, июль"
             required
             type="text"
           />
         </label>
 
         <label className="field">
-          <span>Slug</span>
+          <span>Короткий адрес</span>
           <input
             defaultValue=""
             name="slug"
-            placeholder="techcommunity-fest-moscow"
+            placeholder="acme-july-event"
             type="text"
           />
         </label>
 
+        <p className="helper-copy">
+          Если оставить короткий адрес пустым, мы создадим его автоматически по названию.
+        </p>
+
         <div className="actions">
           <button className="button" disabled={isPending} type="submit">
-            {isPending ? "Создание..." : "Создать workspace"}
+            {isPending ? "Создаём проект..." : "Создать проект"}
           </button>
         </div>
       </form>

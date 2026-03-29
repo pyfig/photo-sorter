@@ -4,6 +4,7 @@ export interface WorkspaceSummary {
   id: string;
   name: string;
   slug: string;
+  isShared: boolean;
   role: string;
   totalPhotos: number;
   activeJobs: number;
@@ -22,6 +23,7 @@ export interface WorkspaceOverview {
   id: string;
   name: string;
   slug: string;
+  isShared: boolean;
   totalPhotos: number;
   peopleCount: number;
   uploadCount: number;

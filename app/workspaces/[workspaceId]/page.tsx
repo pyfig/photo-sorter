@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { SummaryCard } from "@/components/summary-card";
 import { getWorkspaceOverview } from "@/lib/data";
-import { formatDate, percent } from "@/lib/utils";
+import { formatDate, percent, shortId } from "@/lib/utils";
 
 export default async function WorkspacePage({
   params
@@ -23,29 +23,43 @@ export default async function WorkspacePage({
   return (
     <>
       <PageHeader
-        eyebrow="Workspace"
+        backHref="/"
+        backLabel="Ко всем проектам"
+        eyebrow={workspace.isShared ? "Готовый workspace" : "Проект"}
         title={workspace.name}
-        description="Сводка по загруженным фотографиям, недавним jobs и переходам в upload/job/person flows."
+        description={
+          workspace.isShared
+            ? "В этом workspace уже лежит предзагруженный набор фотографий. Откройте загрузки, чтобы запустить распознавание на готовом датасете или добавить новую съёмку."
+            : "Здесь видно, сколько фотографий уже загружено, какие результаты готовы и что делать дальше."
+        }
       />
 
       <section className="grid cards" style={{ marginBottom: 24 }}>
-        <SummaryCard label="Photos" value={workspace.totalPhotos} />
-        <SummaryCard label="People" value={workspace.peopleCount} />
-        <SummaryCard label="Uploads" value={workspace.uploadCount} />
-        <SummaryCard label="Slug" value={workspace.slug} />
+        <SummaryCard label="Фото" value={workspace.totalPhotos} />
+        <SummaryCard label="Люди" value={workspace.peopleCount} />
+        <SummaryCard label="Загрузки" value={workspace.uploadCount} />
+        <SummaryCard label="Адрес проекта" value={`/${workspace.slug}`} />
       </section>
 
       <section className="panel" style={{ marginBottom: 24 }}>
+        <div className="panel-intro">
+          <h2>Что можно сделать дальше</h2>
+          <p className="muted">
+            {workspace.isShared
+              ? "В предзагруженном наборе можно сразу открыть загрузки и запустить обработку по уже сохранённым фотографиям."
+              : "Добавьте новую съёмку или откройте последнюю обработку, чтобы посмотреть прогресс и результат."}
+          </p>
+        </div>
         <div className="actions">
           <Link className="button" href={`/workspaces/${workspace.id}/uploads`}>
-            Manage uploads
+            {workspace.isShared ? "Открыть загрузки и запустить обработку" : "Загрузить фото"}
           </Link>
           {workspace.recentJobs[0] ? (
             <Link
               className="button-secondary"
               href={`/workspaces/${workspace.id}/jobs/${workspace.recentJobs[0].id}`}
             >
-              Open latest job
+              Открыть последнюю обработку
             </Link>
           ) : null}
         </div>
@@ -53,14 +67,14 @@ export default async function WorkspacePage({
 
       <section className="panel" style={{ marginBottom: 24 }}>
         <div className="section-heading">
-          <h2>Recent clusters</h2>
-          <span className="muted">Последние найденные люди в этом workspace</span>
+          <h2>Последние результаты</h2>
+          <span className="muted">Готовые группы людей, которые уже можно открыть</span>
         </div>
 
         {workspace.recentClusters.length === 0 ? (
           <EmptyState
-            title="Кластеров пока нет"
-            description="Сначала загрузите фотографии и дождитесь завершения processing job."
+            title="Результатов пока нет"
+            description="Загрузите фотографии и дождитесь завершения обработки. Как только сервис найдёт группы людей, они появятся здесь."
           />
         ) : (
           <section className="cluster-grid">
@@ -75,7 +89,7 @@ export default async function WorkspacePage({
                     // eslint-disable-next-line @next/next/no-img-element
                     <img alt={cluster.displayName} src={cluster.previewUrl} />
                   ) : (
-                    <span>Preview pending</span>
+                    <span>Превью появится после обработки</span>
                   )}
                 </div>
                 <div>
@@ -90,39 +104,46 @@ export default async function WorkspacePage({
       </section>
 
       <section className="panel">
-        <h2>Recent jobs</h2>
+        <div className="section-heading">
+          <h2>Последние обработки</h2>
+          <span className="muted">Статус, прогресс и время завершения по недавним запускам</span>
+        </div>
         {workspace.recentJobs.length === 0 ? (
           <EmptyState
-            title="Jobs пока нет"
-            description="Создайте upload batch на странице uploads и запустите первую обработку."
+            title="Обработок пока нет"
+            description="Перейдите к загрузке фотографий и запустите первую обработку для этого проекта."
           />
         ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Job</th>
-                <th>Status</th>
-                <th>Progress</th>
-                <th>Created</th>
-                <th>Finished</th>
-              </tr>
-            </thead>
-            <tbody>
-              {workspace.recentJobs.map((job) => (
-                <tr key={job.id}>
-                  <td>
-                    <Link href={`/workspaces/${workspace.id}/jobs/${job.id}`}>{job.id}</Link>
-                  </td>
-                  <td>
-                    <StatusBadge status={job.status} />
-                  </td>
-                  <td>{percent(job.progressPercent)}</td>
-                  <td>{formatDate(job.createdAt)}</td>
-                  <td>{formatDate(job.finishedAt)}</td>
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Обработка</th>
+                  <th>Статус</th>
+                  <th>Прогресс</th>
+                  <th>Создана</th>
+                  <th>Завершена</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {workspace.recentJobs.map((job) => (
+                  <tr key={job.id}>
+                    <td>
+                      <Link href={`/workspaces/${workspace.id}/jobs/${job.id}`}>
+                        Обработка #{shortId(job.id)}
+                      </Link>
+                    </td>
+                    <td>
+                      <StatusBadge status={job.status} />
+                    </td>
+                    <td>{percent(job.progressPercent)}</td>
+                    <td>{formatDate(job.createdAt)}</td>
+                    <td>{formatDate(job.finishedAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
     </>

@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "worker": "python3 -m worker.main"
+    "seed:shared-workspace": "node scripts/seed-shared-workspace.mjs",
+    "worker": "./scripts/run-worker.sh"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
@@ -25,4 +26,3 @@
     "typescript": "^5.7.2"
   }
 }
-
