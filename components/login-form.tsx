@@ -33,8 +33,7 @@ export function LoginForm({ nextPath, message }: LoginFormProps) {
         throw new Error("Site URL is not configured");
       }
 
-      const redirectUrl = new URL("/auth/confirm", redirectBase);
-      redirectUrl.searchParams.set("next", normalizeNextPath(nextPath));
+      const redirectUrl = new URL(normalizeNextPath(nextPath), redirectBase);
 
       const { error: authError } = await supabase.auth.signInWithOtp({
         email,

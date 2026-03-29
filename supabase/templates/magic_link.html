@@ -1,0 +1,13 @@
+<h2>Вход в Photo Sorter</h2>
+
+<p>Нажмите на кнопку ниже, чтобы войти в сервис.</p>
+
+<p>
+  <a
+    href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&redirect_to={{ .RedirectTo }}"
+  >
+    Войти
+  </a>
+</p>
+
+<p>Если вы не запрашивали вход, просто проигнорируйте это письмо.</p>

@@ -11,6 +11,38 @@ function redirectToLogin(request: NextRequest, message: string) {
   return NextResponse.redirect(loginUrl);
 }
 
+function resolveRedirectTarget(request: NextRequest): URL {
+  const requestUrl = new URL(request.url);
+  const redirectTo = requestUrl.searchParams.get("redirect_to");
+
+  if (redirectTo) {
+    try {
+      const redirectUrl = new URL(redirectTo, requestUrl);
+
+      if (redirectUrl.origin === requestUrl.origin) {
+        if (redirectUrl.pathname === "/auth/confirm") {
+          return new URL(
+            normalizeNextPath(redirectUrl.searchParams.get("next")),
+            requestUrl
+          );
+        }
+
+        return new URL(
+          `${redirectUrl.pathname}${redirectUrl.search}${redirectUrl.hash}`,
+          requestUrl
+        );
+      }
+    } catch {
+      // Fall through to `next`.
+    }
+  }
+
+  return new URL(
+    normalizeNextPath(requestUrl.searchParams.get("next")),
+    requestUrl
+  );
+}
+
 export async function GET(request: NextRequest) {
   if (!hasRequiredWebEnv()) {
     return redirectToLogin(request, "Supabase env не настроены.");
@@ -19,13 +51,25 @@ export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const tokenHash = requestUrl.searchParams.get("token_hash");
   const type = requestUrl.searchParams.get("type") as EmailOtpType | null;
-  const nextPath = normalizeNextPath(requestUrl.searchParams.get("next"));
+  const code = requestUrl.searchParams.get("code");
+  const redirectTarget = resolveRedirectTarget(request);
+
+  const supabase = await createSupabaseServerClient();
+
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+    if (error) {
+      return redirectToLogin(request, error.message);
+    }
+
+    return NextResponse.redirect(redirectTarget);
+  }
 
   if (!tokenHash || !type) {
     return redirectToLogin(request, "Magic link недействителен или неполон.");
   }
 
-  const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.verifyOtp({
     type,
     token_hash: tokenHash
@@ -35,5 +79,5 @@ export async function GET(request: NextRequest) {
     return redirectToLogin(request, error.message);
   }
 
-  return NextResponse.redirect(new URL(nextPath, request.url));
+  return NextResponse.redirect(redirectTarget);
 }
