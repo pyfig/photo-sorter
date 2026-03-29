@@ -1,18 +1,14 @@
 import { createClient } from "@supabase/supabase-js";
 
+import { getRequiredAdminEnv } from "@/lib/env";
+
 export function createSupabaseAdminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const env = getRequiredAdminEnv();
 
-  if (!url || !serviceRoleKey) {
-    throw new Error("Supabase service role env is not configured");
-  }
-
-  return createClient(url, serviceRoleKey, {
+  return createClient(env.supabaseUrl, env.supabaseServiceRoleKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false
     }
   });
 }
-

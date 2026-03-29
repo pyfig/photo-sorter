@@ -26,6 +26,23 @@ export interface WorkspaceOverview {
   peopleCount: number;
   uploadCount: number;
   recentJobs: RecentJob[];
+  recentClusters: WorkspaceCluster[];
+}
+
+export interface WorkspaceCluster {
+  id: string;
+  displayName: string;
+  previewPath: string | null;
+  previewUrl: string | null;
+  photoCount: number;
+  createdAt: string;
+}
+
+export interface UploadSummary {
+  id: string;
+  name: string;
+  status: "uploading" | "uploaded" | "failed";
+  createdAt: string;
 }
 
 export interface JobEvent {
@@ -50,6 +67,7 @@ export interface JobDetails {
 export interface PersonPhoto {
   id: string;
   storagePath: string;
+  signedUrl: string | null;
 }
 
 export interface PersonDetails {
@@ -57,7 +75,7 @@ export interface PersonDetails {
   workspaceId: string;
   displayName: string;
   previewPath: string | null;
+  previewUrl: string | null;
   photoCount: number;
   photos: PersonPhoto[];
 }
-

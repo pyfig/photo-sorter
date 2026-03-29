@@ -20,3 +20,15 @@ python3 -m worker.main
 
 Для production worker предполагается отдельный container runtime, а не Vercel.
 
+Рекомендуемый runtime для текущего проекта: `Railway`.
+
+Минимальный набор env:
+
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `WORKER_ID`
+- `PYTHON_WORKER_POLL_INTERVAL_SECONDS`
+- `PYTHON_WORKER_CLUSTER_EPS`
+- `PYTHON_WORKER_CLUSTER_MIN_SAMPLES`
+- `PYTHON_WORKER_MIN_FACE_SIZE`
+- `PYTHON_WORKER_MODEL_NAME`

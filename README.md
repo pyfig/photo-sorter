@@ -16,21 +16,22 @@ Photo Sorter - облачный AI-сервис для сортировки фо
 Репозиторий содержит:
 
 - актуализированную спецификацию под `Supabase + Vercel`
-- каркас `Next.js` приложения
-- базовую схему Supabase
-- skeleton Python worker для асинхронной обработки jobs
+- `Next.js` приложение с production-only auth/upload/job flow
+- базовую схему Supabase c RLS, buckets и queue function
+- Python worker для асинхронной обработки jobs
 
 ## Architecture
 
 End-to-end поток:
 
 1. Пользователь входит в приложение через Supabase Auth.
-2. Создает upload batch и загружает фотографии в `Supabase Storage`.
-3. Web app регистрирует загруженные объекты в таблице `photos`.
-4. Web app создает `processing_job` в Supabase.
-5. Python worker забирает job из очереди.
-6. Worker читает фото из storage, строит face embeddings, кластеризует результаты и пишет их в Postgres.
-7. UI на Vercel читает статусы, кластеры и превью из Supabase.
+2. Если workspace еще нет, создает его в UI.
+3. Создает upload batch и загружает фотографии в `Supabase Storage`.
+4. Web app регистрирует загруженные объекты в таблице `photos`.
+5. Web app создает `processing_job` в Supabase.
+6. Python worker забирает job из очереди.
+7. Worker читает фото из storage, строит face embeddings, кластеризует результаты и пишет их в Postgres.
+8. UI на Vercel читает статусы, кластеры и превью из Supabase через signed URLs.
 
 ## Repository Layout
 
@@ -56,7 +57,9 @@ End-to-end поток:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_URL`
 - `SUPABASE_DB_PASSWORD`
+- `NEXT_PUBLIC_SITE_URL`
 
 ## Development Commands
 
@@ -75,19 +78,21 @@ python3 -m worker.main
 
 - импортировать репозиторий как Next.js project
 - добавить публичные и серверные Supabase env vars
+- настроить `NEXT_PUBLIC_SITE_URL` и auth redirect на `/auth/confirm`
 - деплоить `main` branch
 
 ### Supabase
 
 - создать проект
 - применить SQL migration из `supabase/migrations/`
-- создать storage buckets и auth через migration
+- настроить Auth site URL и redirect URLs
+- подключить `Resend SMTP` для magic link delivery
 
 ### Worker
 
 - собрать контейнер из `worker/Dockerfile`
 - задеплоить на Railway
-- передать `SUPABASE_URL` и `SUPABASE_SERVICE_ROLE_KEY`
+- передать `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` и `PYTHON_WORKER_*`
 
 ## Source Of Truth
 

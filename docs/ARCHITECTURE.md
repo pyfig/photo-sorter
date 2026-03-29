@@ -9,14 +9,15 @@
 ## Core Data Flow
 
 1. Пользователь логинится.
-2. Создает upload batch.
-3. Загружает фото в `raw-photos/<workspace_id>/<upload_id>/...`.
-4. Клиент регистрирует загруженные файлы в таблице `photos`.
-5. Создает processing job.
-6. Worker забирает queued job и переводит в `running`.
-7. Worker читает фото, строит embeddings, формирует clusters.
-8. Worker пишет `person_clusters`, `cluster_photos`, `detected_faces`, preview files и `job_events`.
-9. UI отображает итоговый статус и людей.
+2. При первом входе создает workspace.
+3. Создает upload batch.
+4. Загружает фото в `raw-photos/<workspace_id>/<upload_id>/...`.
+5. Клиент регистрирует загруженные файлы в таблице `photos`.
+6. Создает processing job.
+7. Worker забирает queued job и переводит в `running`.
+8. Worker читает фото, строит embeddings, формирует clusters.
+9. Worker пишет `person_clusters`, `cluster_photos`, `detected_faces`, preview files и `job_events`.
+10. UI отображает итоговый статус и людей через signed URLs.
 
 ## Reliability Notes
 
@@ -24,3 +25,4 @@
 - каждый важный шаг worker пишет в `job_events`
 - schema changes допускаются только через migrations
 - web app и worker скейлятся независимо
+- buckets остаются приватными, публичного file access нет

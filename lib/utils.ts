@@ -13,3 +13,19 @@ export function percent(value: number): string {
   return `${Math.max(0, Math.min(100, value))}%`;
 }
 
+export function slugify(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 64);
+}
+
+export function normalizeNextPath(value: string | null | undefined): string {
+  if (!value || !value.startsWith("/")) {
+    return "/";
+  }
+
+  return value;
+}

@@ -1,6 +1,12 @@
+import { notFound } from "next/navigation";
+
+import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { SummaryCard } from "@/components/summary-card";
-import { getWorkspaceOverview } from "@/lib/data";
+import { StatusBadge } from "@/components/status-badge";
+import { UploadFlow } from "@/components/upload-flow";
+import { getWorkspaceOverview, listUploadsForWorkspace } from "@/lib/data";
+import { formatDate } from "@/lib/utils";
 
 export default async function UploadsPage({
   params
@@ -9,6 +15,11 @@ export default async function UploadsPage({
 }) {
   const { workspaceId } = await params;
   const workspace = await getWorkspaceOverview(workspaceId);
+  const uploads = await listUploadsForWorkspace(workspaceId);
+
+  if (!workspace) {
+    notFound();
+  }
 
   return (
     <>
@@ -16,7 +27,7 @@ export default async function UploadsPage({
         backHref={`/workspaces/${workspaceId}`}
         eyebrow="Uploads"
         title="Upload batches"
-        description="Этот экран фиксирует cloud-first flow: сначала upload batch в Supabase Storage, затем создание processing job."
+        description="Создайте upload batch, загрузите фото в Supabase Storage и сразу поставьте processing job в очередь."
       />
 
       <section className="grid cards" style={{ marginBottom: 24 }}>
@@ -25,24 +36,52 @@ export default async function UploadsPage({
         <SummaryCard label="Photos" value={workspace.totalPhotos} />
       </section>
 
-      <section className="panel" style={{ marginBottom: 24 }}>
-        <h2>API contract</h2>
-        <p className="muted">
-          <code>POST /api/workspaces/[workspaceId]/uploads</code> создает upload
-          batch. После этого клиент загружает файлы напрямую в bucket{" "}
-          <code>raw-photos</code> по пути{" "}
-          <code>{"{workspace_id}/{upload_id}/filename"}</code>, а затем вызывает{" "}
-          <code>POST /api/workspaces/[workspaceId]/uploads/[uploadId]/photos</code>{" "}
-          для записи метаданных файлов в таблицу <code>photos</code>.
-        </p>
-      </section>
+      <div className="grid" style={{ marginBottom: 24 }}>
+        <UploadFlow workspaceId={workspaceId} />
+      </div>
 
       <section className="panel">
-        <h2>Следующий шаг</h2>
-        <p className="muted">
-          После загрузки фронтенд создает processing job через{" "}
-          <code>POST /api/workspaces/[workspaceId]/jobs</code>.
-        </p>
+        <h2>Recent uploads</h2>
+        {uploads.length === 0 ? (
+          <EmptyState
+            title="Uploads пока нет"
+            description="Создайте первый upload batch выше. После успешной регистрации файлов он появится в этом списке."
+          />
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Upload</th>
+                <th>Status</th>
+                <th>Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              {uploads.map((upload) => (
+                <tr key={upload.id}>
+                  <td>
+                    <div>
+                      <strong>{upload.name}</strong>
+                      <p className="muted">{upload.id}</p>
+                    </div>
+                  </td>
+                  <td>
+                    <StatusBadge
+                      status={
+                        upload.status === "uploaded"
+                          ? "completed"
+                          : upload.status === "failed"
+                            ? "failed"
+                            : "running"
+                      }
+                    />
+                  </td>
+                  <td>{formatDate(upload.createdAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </section>
     </>
   );

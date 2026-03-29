@@ -1,0 +1,11 @@
+node_modules
+.next
+assets
+supabase/.temp
+localhost-3000-home.png
+localhost-3000-home-mobile.png
+photo-sorter-home-prod-3002-desktop.png
+photo-sorter-home-prod-3002-mobile-fixed.png
+photo-sorter-home-prod-3002-mobile.png
+photo-sorter-home-prod-desktop.png
+photo-sorter-login-prod-3002-mobile.png

@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 
+import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { StatusBadge } from "@/components/status-badge";
 import { SummaryCard } from "@/components/summary-card";
@@ -13,6 +15,10 @@ export default async function WorkspacePage({
 }) {
   const { workspaceId } = await params;
   const workspace = await getWorkspaceOverview(workspaceId);
+
+  if (!workspace) {
+    notFound();
+  }
 
   return (
     <>
@@ -45,36 +51,80 @@ export default async function WorkspacePage({
         </div>
       </section>
 
+      <section className="panel" style={{ marginBottom: 24 }}>
+        <div className="section-heading">
+          <h2>Recent clusters</h2>
+          <span className="muted">Последние найденные люди в этом workspace</span>
+        </div>
+
+        {workspace.recentClusters.length === 0 ? (
+          <EmptyState
+            title="Кластеров пока нет"
+            description="Сначала загрузите фотографии и дождитесь завершения processing job."
+          />
+        ) : (
+          <section className="cluster-grid">
+            {workspace.recentClusters.map((cluster) => (
+              <Link
+                className="cluster-card"
+                href={`/workspaces/${workspace.id}/people/${cluster.id}`}
+                key={cluster.id}
+              >
+                <div className="cluster-preview">
+                  {cluster.previewUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img alt={cluster.displayName} src={cluster.previewUrl} />
+                  ) : (
+                    <span>Preview pending</span>
+                  )}
+                </div>
+                <div>
+                  <strong>{cluster.displayName}</strong>
+                  <p className="muted">{cluster.photoCount} фото</p>
+                  <p className="muted">{formatDate(cluster.createdAt)}</p>
+                </div>
+              </Link>
+            ))}
+          </section>
+        )}
+      </section>
+
       <section className="panel">
         <h2>Recent jobs</h2>
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Job</th>
-              <th>Status</th>
-              <th>Progress</th>
-              <th>Created</th>
-              <th>Finished</th>
-            </tr>
-          </thead>
-          <tbody>
-            {workspace.recentJobs.map((job) => (
-              <tr key={job.id}>
-                <td>
-                  <Link href={`/workspaces/${workspace.id}/jobs/${job.id}`}>{job.id}</Link>
-                </td>
-                <td>
-                  <StatusBadge status={job.status} />
-                </td>
-                <td>{percent(job.progressPercent)}</td>
-                <td>{formatDate(job.createdAt)}</td>
-                <td>{formatDate(job.finishedAt)}</td>
+        {workspace.recentJobs.length === 0 ? (
+          <EmptyState
+            title="Jobs пока нет"
+            description="Создайте upload batch на странице uploads и запустите первую обработку."
+          />
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Job</th>
+                <th>Status</th>
+                <th>Progress</th>
+                <th>Created</th>
+                <th>Finished</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {workspace.recentJobs.map((job) => (
+                <tr key={job.id}>
+                  <td>
+                    <Link href={`/workspaces/${workspace.id}/jobs/${job.id}`}>{job.id}</Link>
+                  </td>
+                  <td>
+                    <StatusBadge status={job.status} />
+                  </td>
+                  <td>{percent(job.progressPercent)}</td>
+                  <td>{formatDate(job.createdAt)}</td>
+                  <td>{formatDate(job.finishedAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </section>
     </>
   );
 }
-

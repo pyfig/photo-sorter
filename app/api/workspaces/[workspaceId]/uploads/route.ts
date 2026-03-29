@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { hasSupabaseConfig } from "@/lib/env";
+import { hasRequiredWebEnv } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 interface UploadRequestBody {
@@ -11,7 +11,7 @@ export async function POST(
   request: NextRequest,
   context: { params: Promise<{ workspaceId: string }> }
 ) {
-  if (!hasSupabaseConfig()) {
+  if (!hasRequiredWebEnv()) {
     return NextResponse.json(
       { error: "Supabase env is not configured" },
       { status: 500 }

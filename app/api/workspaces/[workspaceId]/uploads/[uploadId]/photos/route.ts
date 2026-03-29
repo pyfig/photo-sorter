@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { hasSupabaseConfig } from "@/lib/env";
+import { hasRequiredWebEnv } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 interface FilePayload {
@@ -18,7 +18,7 @@ export async function POST(
   request: NextRequest,
   context: { params: Promise<{ workspaceId: string; uploadId: string }> }
 ) {
-  if (!hasSupabaseConfig()) {
+  if (!hasRequiredWebEnv()) {
     return NextResponse.json(
       { error: "Supabase env is not configured" },
       { status: 500 }
@@ -36,6 +36,20 @@ export async function POST(
   const { data: authData } = await supabase.auth.getUser();
   if (!authData.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { data: upload, error: uploadError } = await supabase
+    .from("photo_uploads")
+    .select("id")
+    .eq("id", uploadId)
+    .eq("workspace_id", workspaceId)
+    .single();
+
+  if (uploadError || !upload) {
+    return NextResponse.json(
+      { error: "Upload batch not found for workspace" },
+      { status: 404 }
+    );
   }
 
   const rows = body.files.map((file) => ({
@@ -69,4 +83,3 @@ export async function POST(
 
   return NextResponse.json({ photos: data }, { status: 201 });
 }
-

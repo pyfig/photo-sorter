@@ -10,7 +10,7 @@
 
 - добавить `package.json`, `tsconfig.json`, `next.config.ts`
 - создать `app/` routes для workspace, uploads, jobs, people
-- добавить базовые UI компоненты и demo fallback
+- добавить базовые UI компоненты и production-only auth-aware navigation
 
 ## T003. Supabase schema
 
@@ -40,9 +40,28 @@
 - проверить SQL migration на предмет согласованности с кодом
 - подготовить следующие шаги для запуска через `npm install` и worker env
 
+## T007. Auth and onboarding
+
+- реализовать `/login` с email magic link
+- добавить `/auth/confirm`
+- добавить middleware для session refresh и защиты приватных routes
+- добавить self-serve workspace creation flow
+
+## T008. Real upload and results UI
+
+- убрать mock/demo fallback из `lib/data.ts`
+- реализовать upload form с browser-side storage upload
+- показать recent clusters и preview images в workspace UI
+- показать signed URLs для preview и raw photos на person page
+
+## T009. Production deployment readiness
+
+- обновить `.env.example` под production-only env model
+- задокументировать `Supabase + Resend SMTP + Vercel + Railway` rollout
+- улучшить `/api/health` для проверки env и Supabase connectivity
+
 ## Next Sprint
 
-- реальная форма upload с browser-side storage upload
-- запись `photos` после загрузки файлов
-- auth UI и workspace creation flow
-- улучшение retries/error handling
+- retry/cancel UI для jobs
+- базовый review и rename flow для clusters
+- улучшение error handling и quotas

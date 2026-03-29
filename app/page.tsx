@@ -1,11 +1,44 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
 
+import { ConfigurationState } from "@/components/configuration-state";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { SummaryCard } from "@/components/summary-card";
+import { WorkspaceOnboardingForm } from "@/components/workspace-onboarding-form";
+import { getWebEnvCheck, hasRequiredWebEnv } from "@/lib/env";
 import { listWorkspacesForUser } from "@/lib/data";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export default async function HomePage() {
+  if (!hasRequiredWebEnv()) {
+    const check = getWebEnvCheck();
+
+    return (
+      <>
+        <PageHeader
+          eyebrow="Setup"
+          title="Supabase configuration required"
+          description="Приложение больше не работает в demo-режиме. Для запуска нужны реальные Supabase env."
+        />
+        <ConfigurationState
+          description="Добавьте обязательные env в `.env.local` или в cloud runtime и перезапустите приложение."
+          missingKeys={check.missing}
+          title="Runtime не настроен"
+        />
+      </>
+    );
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
   const workspaces = await listWorkspacesForUser();
 
   return (
@@ -13,7 +46,7 @@ export default async function HomePage() {
       <PageHeader
         eyebrow="Supabase + Vercel"
         title="Photo Sorter"
-        description="Web-first интерфейс для загрузки фото, постановки jobs в очередь и просмотра кластеров лиц. При отсутствии Supabase env страница работает в demo-режиме."
+        description="Production-only интерфейс для login, workspace onboarding, upload batches и просмотра результатов кластеризации."
       />
 
       <section className="grid cards" style={{ marginBottom: 24 }}>
@@ -24,10 +57,13 @@ export default async function HomePage() {
       </section>
 
       {workspaces.length === 0 ? (
-        <EmptyState
-          title="Workspaces не найдены"
-          description="Подключите Supabase env и создайте workspace, либо используйте demo-данные по умолчанию."
-        />
+        <section className="grid">
+          <EmptyState
+            title="Workspaces пока нет"
+            description="Создайте первый workspace, чтобы загружать фото и запускать processing jobs."
+          />
+          <WorkspaceOnboardingForm />
+        </section>
       ) : (
         <section className="grid">
           {workspaces.map((workspace) => (
@@ -48,7 +84,7 @@ export default async function HomePage() {
                   Открыть workspace
                 </Link>
                 <Link className="button-secondary" href={`/workspaces/${workspace.id}/uploads`}>
-                  Uploads
+                  Uploads & Jobs
                 </Link>
               </div>
             </article>
@@ -58,4 +94,3 @@ export default async function HomePage() {
     </>
   );
 }
-
