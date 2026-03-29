@@ -13,6 +13,10 @@ export function percent(value: number): string {
   return `${Math.max(0, Math.min(100, value))}%`;
 }
 
+export function shortId(value: string): string {
+  return value.slice(0, 8);
+}
+
 export function slugify(value: string): string {
   return value
     .trim()

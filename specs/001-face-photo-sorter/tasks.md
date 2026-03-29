@@ -18,6 +18,7 @@
 - добавить RLS policies
 - добавить storage buckets
 - добавить SQL function `claim_next_processing_job`
+- добавить таблицу `worker_heartbeats` для runtime liveness
 
 ## T004. Worker bootstrap
 
@@ -25,6 +26,7 @@
 - добавить polling loop
 - добавить processor на InsightFace + DBSCAN
 - добавить запись clusters, faces, previews и job events
+- добавить heartbeat update на idle/running/completed шагах
 
 ## T005. API contracts
 
@@ -53,12 +55,33 @@
 - реализовать upload form с browser-side storage upload
 - показать recent clusters и preview images в workspace UI
 - показать signed URLs для preview и raw photos на person page
+- показать bbox и confidence face detector на person page
+- зафиксировать формат фотокарточки `4:5`, чтобы большие фото не ломали сетку
 
 ## T009. Production deployment readiness
 
 - обновить `.env.example` под production-only env model
 - задокументировать `Supabase + Resend SMTP + Vercel + Railway` rollout
 - улучшить `/api/health` для проверки env и Supabase connectivity
+
+## T010. SaaS UX pass
+
+- убрать из ключевых экранов bootstrap/dev wording
+- объяснить login, onboarding, upload, processing и result flow человеческим языком
+- добавить на главную и внутренние экраны явные next actions и понятные empty/success/error states
+
+## T011. Queue diagnostics and worker startup
+
+- добавить явную проверку worker runtime в `/api/health` по heartbeat, а не только по env
+- показать оператору понятную причину, если job застряла в `queued`
+- сделать локальный запуск worker воспроизводимым через один скрипт с fail-fast env validation
+
+## T012. Solarpunk UI redesign
+
+- обновить `spec.md`, `design.md`, `decisions.md` и `README.md` под новый visual system
+- добавить brand mark для favicon/tab icon и основного header
+- перевести `layout`, home, login и внутренние экраны на единые typography/color/motion tokens
+- сохранить текущие маршруты, backend contracts и job lifecycle без продуктовых подмен
 
 ## Next Sprint
 

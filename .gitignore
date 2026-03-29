@@ -8,6 +8,8 @@ coverage
 __pycache__
 *.pyc
 .pytest_cache
+.venv
+.cache
 .DS_Store
 
 .vercel

@@ -27,6 +27,7 @@
 ### 2. Job orchestration
 
 - UI создает запись в `processing_jobs`
+- worker upsert'ит состояние в `worker_heartbeats`
 - worker вызывает `claim_next_processing_job(worker_name)`
 - функция атомарно переводит первый `queued` job в `running`
 
@@ -44,7 +45,15 @@
 
 - UI читает workspace summary, jobs, clusters и events из Postgres
 - UI генерирует signed URLs для preview и исходных фото через auth-aware server-side client
+- страница person cluster читает `detected_faces` для текущего `cluster_id` и группирует их по `photo_id`
+- bbox хранится в пиксельных координатах, а overlay на UI пересчитывается в проценты относительно фактического размера загруженного изображения
+- фотокарточка человека использует фиксированный frame `4:5`, а изображение внутри него рендерится без потери геометрии bbox
 - страницы используют production-only доступ к Supabase без fallback demo-data
+- ключевые экраны используют продуктовый язык и подсказывают следующий шаг без знания внутренних терминов платформы
+- общий app-shell использует единый visual system для home, login и внутренних экранов
+- brand mark поставляется как App Router icon asset и одновременно используется в основном header
+- типографика опирается на шрифты с `latin + cyrillic` subsets, чтобы русский и английский текст выглядели согласованно
+- solarpunk-декор реализуется как presentation-layer: CSS gradients, organic surfaces, illustration-like accents и lightweight motion без изменения data contracts
 
 ## Modules
 
@@ -55,6 +64,7 @@
 - `lib/supabase/`
 - `lib/data.ts`
 - `middleware.ts`
+- `app/icon.svg`
 
 ### Data layer
 
@@ -62,6 +72,7 @@
 - storage buckets
 - RLS policies
 - SQL queue function
+- `worker_heartbeats`
 
 ### Worker
 
@@ -74,10 +85,14 @@
 
 - единый источник истины по job lifecycle: `processing_jobs`
 - аудит ключевых действий: `job_events`
+- liveness worker runtime фиксируется отдельно в `worker_heartbeats`
 - web app не зависит от локального ML runtime
 - worker можно масштабировать отдельно от UI
 - service-role ключ используется только worker/runtime automation, не браузером
-- `/api/health` проверяет обязательные env и базовую доступность Supabase
+- `/api/health` проверяет обязательные env, базовую доступность Supabase, снимок очереди jobs и свежесть heartbeat worker
+- локальный worker entrypoint валидирует env заранее и использует writable cache directories для ML-библиотек
+- визуальный редизайн не добавляет новых API или data dependencies; весь декор должен деградировать безопасно до обычного SSR/HTML/CSS
+- motion делается через CSS и должен уважать `prefers-reduced-motion`, чтобы UI оставался диагностируемым и доступным
 
 ## Security Model
 
@@ -90,6 +105,7 @@
 ## Failure Handling
 
 - отсутствие обязательных env переводит app в setup/degraded state, а не в demo-режим
+- отсутствие heartbeat от worker переводит operability слой в degraded state даже если env у web runtime настроены
 - ошибка конкретного фото должна логироваться событием и не останавливать весь batch, если оставшаяся часть job может быть обработана
 - фатальная ошибка worker переводит job в `failed` и пишет `job_failed` event
 - повторный job создает новые `person_clusters` в рамках нового `job_id`, не перезаписывая прошлый run

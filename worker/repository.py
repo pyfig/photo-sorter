@@ -11,6 +11,7 @@ from worker.models import PhotoRecord, QueuedJob
 
 class WorkerRepository:
     def __init__(self, settings: Settings) -> None:
+        self.settings = settings
         self.client: Client = create_client(
             settings.supabase_url,
             settings.supabase_service_role_key,
@@ -30,6 +31,12 @@ class WorkerRepository:
             row = row[0] if row else None
 
         if not row:
+            return None
+
+        if not isinstance(row, dict):
+            return None
+
+        if not row.get("id") or not row.get("workspace_id") or not row.get("input_batch_id"):
             return None
 
         return QueuedJob(
@@ -158,3 +165,78 @@ class WorkerRepository:
         if not rows:
             return
         self.client.table("cluster_photos").insert(rows).execute()
+
+    def mark_worker_started(self, worker_id: str) -> None:
+        self._upsert_worker_heartbeat(
+            worker_id,
+            runtime_status="starting",
+            current_job_id=None,
+            current_job_started_at=None,
+            last_error=None,
+        )
+
+    def mark_worker_running(
+        self,
+        worker_id: str,
+        job_id: str,
+        job_started_at: str | None = None,
+    ) -> None:
+        payload: dict[str, Any] = {
+            "current_job_id": job_id,
+            "last_error": None,
+        }
+        if job_started_at is not None:
+            payload["current_job_started_at"] = job_started_at
+
+        self._upsert_worker_heartbeat(
+            worker_id,
+            runtime_status="running",
+            **payload,
+        )
+
+    def mark_worker_idle(
+        self,
+        worker_id: str,
+        last_job_id: str | None = None,
+        last_error: str | None = None,
+        clear_last_error: bool = False,
+    ) -> None:
+        payload: dict[str, Any] = {
+            "current_job_id": None,
+            "current_job_started_at": None,
+        }
+        if last_error is not None or clear_last_error:
+            payload["last_error"] = last_error
+        if last_job_id is not None:
+            payload["last_job_id"] = last_job_id
+            payload["last_completed_at"] = datetime.now(timezone.utc).isoformat()
+
+        self._upsert_worker_heartbeat(
+            worker_id,
+            runtime_status="idle",
+            **payload,
+        )
+
+    def _upsert_worker_heartbeat(
+        self,
+        worker_id: str,
+        runtime_status: str,
+        **fields: Any,
+    ) -> None:
+        payload: dict[str, Any] = {
+            "worker_id": worker_id,
+            "runtime_status": runtime_status,
+            "poll_interval_seconds": self.settings.poll_interval_seconds,
+            "last_seen_at": datetime.now(timezone.utc).isoformat(),
+            "metadata": {
+                "runtime": "python-worker",
+                "model_name": self.settings.insightface_model_name,
+            },
+        }
+        payload.update(fields)
+
+        (
+            self.client.table("worker_heartbeats")
+            .upsert(payload, on_conflict="worker_id")
+            .execute()
+        )

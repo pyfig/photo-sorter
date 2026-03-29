@@ -9,6 +9,8 @@ const SHARED_WORKSPACE_NAME = "TechCommunity Fest Demo";
 const SHARED_WORKSPACE_SLUG = "techcommunity-fest-demo";
 const SHARED_UPLOAD_NAME = "TechCommunity Fest Preloaded Photos";
 const DEFAULT_SOURCE_DIR = "assets/images/tcf-msk";
+const DEFAULT_SYSTEM_OWNER_EMAIL = "shared-workspace-bot@photo-sorter.local";
+const DEFAULT_SYSTEM_OWNER_NAME = "Shared Workspace Bot";
 const UPSERT_BATCH_SIZE = 50;
 const USER_PAGE_SIZE = 200;
 
@@ -94,6 +96,48 @@ async function listAllUsers(supabase) {
   }
 
   return users;
+}
+
+async function ensureSystemOwnerUser(supabase, users) {
+  const systemOwnerEmail = (
+    process.env.SHARED_WORKSPACE_SYSTEM_EMAIL ?? DEFAULT_SYSTEM_OWNER_EMAIL
+  )
+    .trim()
+    .toLowerCase();
+
+  const existingUser = users.find(
+    (user) => (user.email ?? "").trim().toLowerCase() === systemOwnerEmail
+  );
+
+  if (existingUser) {
+    return {
+      owner: existingUser,
+      users
+    };
+  }
+
+  const { data, error } = await supabase.auth.admin.createUser({
+    email: systemOwnerEmail,
+    email_confirm: true,
+    user_metadata: {
+      display_name: DEFAULT_SYSTEM_OWNER_NAME
+    },
+    app_metadata: {
+      system: true,
+      role: "shared_workspace_owner"
+    }
+  });
+
+  if (error || !data.user) {
+    throw new Error(
+      `Failed to create shared workspace system owner: ${error?.message ?? "Unknown error"}`
+    );
+  }
+
+  return {
+    owner: data.user,
+    users: [...users, data.user]
+  };
 }
 
 async function ensureSharedWorkspace(supabase, ownerId) {
@@ -280,11 +324,8 @@ async function main() {
     throw new Error(`No files found in ${sourceDirectory}`);
   }
 
-  const users = await listAllUsers(supabase);
-
-  if (users.length === 0) {
-    throw new Error("No auth users found. Log in once before seeding the shared workspace.");
-  }
+  const existingUsers = await listAllUsers(supabase);
+  const { owner, users } = await ensureSystemOwnerUser(supabase, existingUsers);
 
   users.sort((left, right) => {
     const leftTimestamp = Date.parse(left.created_at ?? "");
@@ -292,7 +333,7 @@ async function main() {
     return leftTimestamp - rightTimestamp;
   });
 
-  const ownerId = users[0].id;
+  const ownerId = owner.id;
   const workspace = await ensureSharedWorkspace(supabase, ownerId);
   await ensureWorkspaceMemberships(
     supabase,

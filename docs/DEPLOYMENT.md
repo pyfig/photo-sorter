@@ -51,6 +51,7 @@
    - worker поднялся
    - нет ошибок по InsightFace/onnxruntime
    - worker может claim'ить queued job
+   - `SUPABASE_SERVICE_ROLE_KEY` реально задан и не пустой
 
 ## Smoke checks
 
@@ -58,8 +59,16 @@
 - создается workspace из UI
 - upload batch пишет файлы в `raw-photos`
 - `/api/workspaces/[workspaceId]/jobs` создает `queued` job
+- worker публикует heartbeat в `worker_heartbeats`
 - worker переводит job в `running/completed`
 - UI отображает clusters, previews и job events
+
+## Troubleshooting
+
+- Если jobs остаются в `queued`, сначала проверьте `/api/health`.
+- Если `workerRuntime` не `ok`, отдельный Python worker не публикует свежий heartbeat и очередь фактически не обслуживается.
+- Если `queuedJobs > 0`, `runningJobs = 0`, а `workerRuntime.error` сообщает про missing/stale heartbeat, consumer очереди не запущен или стартует без service-role ключа.
+- Для локальной проверки используйте `npm run worker`, а не raw `python -m worker.main`.
 
 ## Rollback
 

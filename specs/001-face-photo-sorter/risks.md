@@ -60,7 +60,9 @@
 
 Снижение риска:
 
-- добавить heartbeat/reaper в следующей фазе
+- heartbeat публикуется в `worker_heartbeats` уже в текущей фазе
+- health-check должен показывать stale heartbeat отдельно от очереди
+- reaper/retry остаются следующим шагом
 - использовать `claimed_at` для обнаружения зависших jobs
 
 ### R202. Service role leakage

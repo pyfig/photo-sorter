@@ -1,5 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type {
+  DetectedFaceBox,
   JobDetails,
   JobEvent,
   PersonDetails,
@@ -99,6 +100,28 @@ export async function listWorkspacesForUser(): Promise<WorkspaceSummary[]> {
 
     return left.name.localeCompare(right.name, "ru");
   });
+}
+
+function parseDetectedFaceBox(value: unknown): DetectedFaceBox["bbox"] | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const maybeBox = value as Record<string, unknown>;
+  const x1 = Number(maybeBox.x1);
+  const y1 = Number(maybeBox.y1);
+  const x2 = Number(maybeBox.x2);
+  const y2 = Number(maybeBox.y2);
+
+  if ([x1, y1, x2, y2].some((coordinate) => Number.isNaN(coordinate))) {
+    return null;
+  }
+
+  if (x2 <= x1 || y2 <= y1) {
+    return null;
+  }
+
+  return { x1, y1, x2, y2 };
 }
 
 export async function getWorkspaceOverview(
@@ -254,8 +277,44 @@ export async function getPersonDetails(
 
   const { data: photos } =
     photoIds.length > 0
-      ? await supabase.from("photos").select("id, storage_path").in("id", photoIds)
+      ? await supabase
+          .from("photos")
+          .select("id, storage_path")
+          .in("id", photoIds)
+          .order("created_at", { ascending: true })
       : { data: [] as Record<string, unknown>[] };
+
+  const { data: detectedFaces } =
+    photoIds.length > 0
+      ? await supabase
+          .from("detected_faces")
+          .select("id, photo_id, bbox, confidence")
+          .eq("cluster_id", personId)
+          .in("photo_id", photoIds)
+      : { data: [] as Record<string, unknown>[] };
+
+  const facesByPhotoId = new Map<string, DetectedFaceBox[]>();
+  for (const face of detectedFaces ?? []) {
+    const photoId = face.photo_id ? String(face.photo_id) : "";
+    const bbox = parseDetectedFaceBox(face.bbox);
+
+    if (!photoId || !bbox) {
+      continue;
+    }
+
+    const row: DetectedFaceBox = {
+      id: String(face.id),
+      confidence:
+        face.confidence === null || face.confidence === undefined
+          ? null
+          : Number(face.confidence),
+      bbox
+    };
+
+    const existing = facesByPhotoId.get(photoId) ?? [];
+    existing.push(row);
+    facesByPhotoId.set(photoId, existing);
+  }
 
   const previewPath = person.preview_path ? String(person.preview_path) : null;
 
@@ -273,7 +332,13 @@ export async function getPersonDetails(
         return {
           id: String(photo.id),
           storagePath,
-          signedUrl: await createSignedUrl(supabase, "raw-photos", storagePath)
+          signedUrl: await createSignedUrl(supabase, "raw-photos", storagePath),
+          faces: (facesByPhotoId.get(String(photo.id)) ?? []).sort((left, right) => {
+            const leftConfidence = left.confidence ?? -1;
+            const rightConfidence = right.confidence ?? -1;
+
+            return rightConfidence - leftConfidence;
+          })
         };
       })
     )

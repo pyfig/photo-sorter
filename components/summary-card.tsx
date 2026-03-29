@@ -9,9 +9,9 @@ interface SummaryCardProps {
 export function SummaryCard({ label, value, hint }: SummaryCardProps) {
   return (
     <article className="summary-card">
-      <span>{label}</span>
-      <strong>{value}</strong>
-      {hint ? <small>{hint}</small> : null}
+      <span className="summary-card-label">{label}</span>
+      <div className="summary-card-value">{value}</div>
+      {hint ? <small className="summary-card-hint">{hint}</small> : null}
     </article>
   );
 }

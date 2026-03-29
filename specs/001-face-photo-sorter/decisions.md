@@ -110,3 +110,34 @@
 
 - пользователь без workspace не блокируется ручной админ-подготовкой
 - web app использует существующую SQL-функцию `bootstrap_workspace`
+
+## D011. Worker readiness is tracked by database heartbeats
+
+Статус:
+
+- accepted
+
+Причина:
+
+- наличие env у web runtime не доказывает, что отдельный Python worker реально запущен и обслуживает очередь
+
+Следствие:
+
+- worker пишет liveness в `worker_heartbeats`
+- `/api/health` и queued-job diagnostics опираются на свежесть heartbeat, а не только на env
+
+## D012. Web UI uses a shared solarpunk design system without changing product contracts
+
+Статус:
+
+- accepted
+
+Причина:
+
+- нужно заметно улучшить визуальное качество интерфейса, сохранив текущие маршруты, сущности и production-safe поведение
+
+Следствие:
+
+- редизайн выполняется в presentation layer через `layout`, shared components, CSS tokens и icon asset
+- иконка для tab bar и знак в header должны быть одним и тем же brand mark
+- шрифты выбираются только с гарантированной поддержкой `latin` и `cyrillic`

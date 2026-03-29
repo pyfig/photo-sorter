@@ -8,8 +8,13 @@ const requiredAdminEnvKeys = [
   "SUPABASE_SERVICE_ROLE_KEY"
 ] as const;
 
+const requiredWorkerEnvKeys = [
+  "SUPABASE_SERVICE_ROLE_KEY"
+] as const;
+
 export type WebEnvKey = (typeof requiredWebEnvKeys)[number];
 export type AdminEnvKey = (typeof requiredAdminEnvKeys)[number];
+export type WorkerEnvKey = (typeof requiredWorkerEnvKeys)[number];
 
 export interface RuntimeCheck {
   ok: boolean;
@@ -49,12 +54,34 @@ export function getAdminEnvCheck(): RuntimeCheck {
   };
 }
 
+export function getWorkerEnvCheck(): RuntimeCheck {
+  const missing: string[] = [];
+  const workerUrl = process.env.SUPABASE_URL || publicEnv.NEXT_PUBLIC_SUPABASE_URL;
+
+  if (!workerUrl) {
+    missing.push("SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL");
+  }
+
+  if (!adminEnv.SUPABASE_SERVICE_ROLE_KEY) {
+    missing.push("SUPABASE_SERVICE_ROLE_KEY");
+  }
+
+  return {
+    ok: missing.length === 0,
+    missing
+  };
+}
+
 export function hasRequiredWebEnv(): boolean {
   return getWebEnvCheck().ok;
 }
 
 export function hasRequiredAdminEnv(): boolean {
   return getAdminEnvCheck().ok;
+}
+
+export function hasRequiredWorkerEnv(): boolean {
+  return getWorkerEnvCheck().ok;
 }
 
 export function hasSupabaseConfig(): boolean {

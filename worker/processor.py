@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from datetime import datetime, timezone
 from io import BytesIO
+from time import monotonic
 from typing import Any
 
 import numpy as np
@@ -20,18 +22,32 @@ class FaceProcessor:
         self.face_app = FaceAnalysis(name=settings.insightface_model_name)
         self.face_app.prepare(ctx_id=-1, det_size=settings.det_size)
 
-    def process_job(self, repository: WorkerRepository, job: QueuedJob) -> None:
+    def process_job(
+        self,
+        repository: WorkerRepository,
+        job: QueuedJob,
+        job_started_at: str | None = None,
+    ) -> None:
+        heartbeat_started_at = job_started_at or datetime.now(timezone.utc).isoformat()
+        repository.mark_worker_running(self.settings.worker_id, job.id, heartbeat_started_at)
         photos = repository.get_job_photos(job.input_batch_id)
         repository.log_event(job.id, "job_started", {"photo_count": len(photos)})
         repository.update_job_progress(job.id, 10)
+        self._mark_running(repository, job, started_at=heartbeat_started_at)
 
-        embeddings = self._extract_embeddings(repository, job, photos)
+        embeddings = self._extract_embeddings(
+            repository,
+            job,
+            photos,
+            heartbeat_started_at=heartbeat_started_at,
+        )
         if not embeddings:
             repository.log_event(job.id, "job_finished_without_faces", {"photo_count": len(photos)})
             repository.mark_job_completed(job.id)
             return
 
         repository.update_job_progress(job.id, 55)
+        self._mark_running(repository, job, started_at=heartbeat_started_at)
         clustered = self._cluster_embeddings(embeddings)
         repository.log_event(
             job.id,
@@ -40,8 +56,10 @@ class FaceProcessor:
         )
 
         repository.update_job_progress(job.id, 75)
+        self._mark_running(repository, job, started_at=heartbeat_started_at)
         self._persist_clusters(repository, job, clustered, embeddings)
         repository.update_job_progress(job.id, 95)
+        self._mark_running(repository, job, started_at=heartbeat_started_at)
         repository.mark_job_completed(job.id)
         repository.log_event(job.id, "job_completed", {"clusters": len({face.cluster_index for face in clustered})})
 
@@ -50,8 +68,10 @@ class FaceProcessor:
         repository: WorkerRepository,
         job: QueuedJob,
         photos: list[PhotoRecord],
+        heartbeat_started_at: str,
     ) -> list[FaceEmbeddingRecord]:
         embeddings: list[FaceEmbeddingRecord] = []
+        last_heartbeat_refresh = monotonic()
 
         for index, photo in enumerate(photos, start=1):
             try:
@@ -88,9 +108,24 @@ class FaceProcessor:
 
             progress = 10 + int((index / max(len(photos), 1)) * 40)
             repository.update_job_progress(job.id, progress)
+            now = monotonic()
+            if now - last_heartbeat_refresh >= self.settings.poll_interval_seconds:
+                repository.mark_worker_running(self.settings.worker_id, job.id, heartbeat_started_at)
+                last_heartbeat_refresh = now
 
         repository.log_event(job.id, "faces_detected", {"detected_faces": len(embeddings)})
         return embeddings
+
+    def _mark_running(
+        self,
+        repository: WorkerRepository,
+        job: QueuedJob,
+        started_at: str | None = None,
+    ) -> str:
+        resolved_started_at = started_at or datetime.now(timezone.utc).isoformat()
+
+        repository.mark_worker_running(self.settings.worker_id, job.id, resolved_started_at)
+        return resolved_started_at
 
     def _cluster_embeddings(
         self,

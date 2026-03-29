@@ -1,6 +1,6 @@
 # Photo Sorter
 
-Photo Sorter - облачный AI-сервис для сортировки фото по лицам.
+Photo Sorter - облачный AI-сервис для сортировки фото по лицам с цельным web-интерфейсом в solarpunk-эстетике.
 
 Текущая целевая архитектура:
 
@@ -17,6 +17,7 @@ Photo Sorter - облачный AI-сервис для сортировки фо
 
 - актуализированную спецификацию под `Supabase + Vercel`
 - `Next.js` приложение с production-only auth/upload/job flow
+- единый brand mark для favicon и header
 - базовую схему Supabase c RLS, buckets и queue function
 - Python worker для асинхронной обработки jobs
 
@@ -31,7 +32,7 @@ End-to-end поток:
 5. Web app создает `processing_job` в Supabase.
 6. Python worker забирает job из очереди.
 7. Worker читает фото из storage, строит face embeddings, кластеризует результаты и пишет их в Postgres.
-8. UI на Vercel читает статусы, кластеры и превью из Supabase через signed URLs.
+8. UI на Vercel читает статусы, кластеры, bbox детектированных лиц и превью из Supabase через signed URLs.
 
 ## Repository Layout
 
@@ -69,7 +70,7 @@ npm run dev
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r worker/requirements.txt
-python3 -m worker.main
+npm run worker
 ```
 
 ## Deploy
@@ -93,6 +94,19 @@ python3 -m worker.main
 - собрать контейнер из `worker/Dockerfile`
 - задеплоить на Railway
 - передать `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` и `PYTHON_WORKER_*`
+
+## Troubleshooting
+
+Если upload доходит до `queued`, а дальше ничего не происходит:
+
+1. Проверьте `/api/health`.
+   Там должен быть `workerRuntime.status = ok`, свежий `last_seen_at` и понятный снимок очереди.
+2. Проверьте, что worker запущен как long-running process.
+   Web app только создаёт job, но не обрабатывает её.
+3. Проверьте `SUPABASE_SERVICE_ROLE_KEY`.
+   Без него worker не сможет стартовать, claim'ить jobs, читать приватные buckets и писать heartbeat.
+4. Для локального запуска используйте `npm run worker`.
+   Скрипт заранее валидирует env и настроит writable cache directories для ML-библиотек.
 
 ## Source Of Truth
 

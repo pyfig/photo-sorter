@@ -36,6 +36,7 @@
 ### Scenario 3. Browse people
 
 После завершения job пользователь открывает person cluster и просматривает связанные фотографии.
+На странице человека сервис показывает рамку детектированного лица и confidence детектора в процентах для каждой подходящей фотографии.
 
 ### Scenario 4. Multi-face image
 
@@ -83,6 +84,7 @@
 - `photo_uploads`
 - `photos`
 - `processing_jobs`
+- `worker_heartbeats`
 - `person_clusters`
 - `detected_faces`
 - `cluster_photos`
@@ -107,12 +109,23 @@
 - Пользователь без workspace видит onboarding и может создать workspace из UI.
 - Login реализован через Supabase Auth email magic link и callback route `/auth/confirm`.
 - Worker должен забирать job атомарно через функцию очереди.
+- Worker должен публиковать heartbeat в `worker_heartbeats` на старте, при idle-poll и во время активной job.
 - Фото без лиц не должны ломать весь job.
 - Ошибка одного файла не должна прерывать всю обработку без записи события в `job_events`.
 - Один `photo_id` может принадлежать нескольким кластерам.
 - Доступ к данным workspace должен быть изолирован через Auth + RLS.
 - Buckets `raw-photos`, `face-previews`, `derived-artifacts` остаются приватными.
 - UI должен отображать реальные progress/error/empty states для login, workspace creation, upload и job lifecycle.
+- На странице person cluster фотокарточки должны иметь фиксированный формат и не разрастаться из-за больших исходных изображений.
+- Если для фотографии есть `detected_faces` текущего `cluster_id`, UI должен поверх изображения показывать face bounding box и confidence детектора.
+- Ключевые пользовательские экраны должны объяснять текущий статус и следующий шаг без внешней документации.
+- Пользовательский интерфейс должен использовать продуктовый SaaS-язык, а не внутренние инфраструктурные термины по умолчанию.
+- Web app должен использовать единый бренд-знак как favicon/tab icon и как знак в основном header.
+- Кириллица и латиница должны отображаться согласованно: UI использует шрифты с поддержкой `latin` и `cyrillic`, без визуального рассинхрона между русским и английским текстом.
+- Визуальная система web app должна быть цельной для `/`, `/login` и внутренних экранов workspace/upload/job/person, а не только для одного landing-экрана.
+- Редизайн может добавлять декоративные solarpunk-мотивы и более тёплый продуктовый tone, но не должен создавать ожидание несуществующих product capabilities вроде форумов, resource sharing workflows или новых backend-сущностей.
+- Система должна явно диагностировать ситуацию, когда jobs остаются в `queued` из-за отсутствующего, stale или неготового worker runtime.
+- `/api/health` не должен считать worker готовым только по наличию env у web runtime; readiness worker определяется по свежему heartbeat.
 
 ## Acceptance Criteria
 
@@ -124,8 +137,14 @@
 - Worker переводит job в `running`, пишет progress и завершает его как `completed` или `failed`.
 - После завершения job UI показывает список job events.
 - После завершения обработки person cluster содержит `display_name`, `preview_path`, `photo_count` и отображается в UI вместе с preview.
+- На странице человека фотографии отображаются в фиксированных карточках `4:5`, а confidence лица показывается как процент рядом с bbox.
 - Пользователь из другого workspace не может читать чужие jobs, photos и clusters.
-- `/api/health` отражает готовность env и доступность Supabase без demo fallback.
+- `/api/health` отражает готовность web/admin/worker runtime, доступность Supabase и базовое состояние очереди без demo fallback.
+- `/api/health` показывает `last_seen_at`, `worker_id`, freshness threshold и причину деградации, если heartbeat worker отсутствует или устарел.
+- Пользователь без гайдов понимает из интерфейса, как войти, создать проект, загрузить фотографии, запустить обработку и открыть результат.
+- Favicon/tab icon отображается в браузере, а тот же бренд-знак используется в header приложения.
+- Основные экраны выглядят как единая продуктовая среда: согласованные цвета, типографика, карточки, empty states, progress blocks и навигационные элементы.
+- Русский и английский текст в одном интерфейсе выглядит согласованно по гарнитуре и не ломает визуальный тон продукта.
 
 ## Future Extensions
 
