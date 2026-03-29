@@ -16,12 +16,18 @@ export interface RuntimeCheck {
   missing: string[];
 }
 
-function getMissingKeys(keys: readonly string[]): string[] {
-  return keys.filter((key) => !process.env[key]);
-}
+const publicEnv = {
+  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL
+} as const;
+
+const adminEnv = {
+  SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY
+} as const;
 
 export function getWebEnvCheck(): RuntimeCheck {
-  const missing = getMissingKeys(requiredWebEnvKeys);
+  const missing = requiredWebEnvKeys.filter((key) => !publicEnv[key]);
   return {
     ok: missing.length === 0,
     missing
@@ -29,7 +35,14 @@ export function getWebEnvCheck(): RuntimeCheck {
 }
 
 export function getAdminEnvCheck(): RuntimeCheck {
-  const missing = getMissingKeys(requiredAdminEnvKeys);
+  const missing = requiredAdminEnvKeys.filter((key) => {
+    if (key === "NEXT_PUBLIC_SUPABASE_URL") {
+      return !publicEnv.NEXT_PUBLIC_SUPABASE_URL;
+    }
+
+    return !adminEnv.SUPABASE_SERVICE_ROLE_KEY;
+  });
+
   return {
     ok: missing.length === 0,
     missing
@@ -60,8 +73,8 @@ export function getRequiredWebEnv() {
   }
 
   return {
-    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL as string,
-    supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
+    supabaseUrl: publicEnv.NEXT_PUBLIC_SUPABASE_URL as string,
+    supabaseAnonKey: publicEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
   };
 }
 
@@ -73,11 +86,11 @@ export function getRequiredAdminEnv() {
   }
 
   return {
-    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL as string,
-    supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY as string
+    supabaseUrl: publicEnv.NEXT_PUBLIC_SUPABASE_URL as string,
+    supabaseServiceRoleKey: adminEnv.SUPABASE_SERVICE_ROLE_KEY as string
   };
 }
 
 export function getSiteUrl(): string | null {
-  return process.env.NEXT_PUBLIC_SITE_URL ?? null;
+  return publicEnv.NEXT_PUBLIC_SITE_URL ?? null;
 }
