@@ -5,7 +5,6 @@
 - `Vercel`: Next.js web app
 - `Supabase`: Postgres, Auth, Storage, RLS
 - `Railway`: Python worker
-- `Resend SMTP`: доставка magic link через Supabase Auth
 
 ## Supabase
 
@@ -16,9 +15,11 @@
 2. Применить SQL migration из `supabase/migrations/`.
 3. В `Authentication -> URL Configuration` задать:
    - `Site URL`: production URL Vercel
-   - `Redirect URLs`: `https://<vercel-domain>/auth/confirm`
-4. В `Authentication -> SMTP Settings` включить custom SMTP и задать `Resend SMTP`.
+4. В `Authentication -> Providers -> Email` проверить:
+   - `Enable email signup`: включен
+   - `Confirm email`: выключен
 5. Проверить, что buckets `raw-photos`, `face-previews`, `derived-artifacts` созданы migration и остались приватными.
+6. Проверить, что таблицы `processing_jobs`, `job_events`, `person_clusters` подключены к `supabase_realtime`.
 
 ## Vercel
 
@@ -26,13 +27,13 @@
 2. Добавить env:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `NEXT_PUBLIC_SITE_URL`
    - `SUPABASE_SERVICE_ROLE_KEY`
 3. Задеплоить `main`.
 4. Проверить:
    - `/login`
    - `/api/health`
-   - magic link redirect на `/auth/confirm`
+   - регистрация по email + password
+   - повторный вход по email + password
 
 ## Railway
 
@@ -55,19 +56,24 @@
 
 ## Smoke checks
 
-- пользователь получает magic link и логинится
+- пользователь регистрируется по email + password и сразу попадает в приложение
+- существующий пользователь входит по email + password
 - создается workspace из UI
 - upload batch пишет файлы в `raw-photos`
 - `/api/workspaces/[workspaceId]/jobs` создает `queued` job
 - worker публикует heartbeat в `worker_heartbeats`
 - worker переводит job в `running/completed`
+- job details меняет progress/status без `F5`
+- workspace показывает новые clusters без `F5`
 - UI отображает clusters, previews и job events
+- повторное открытие одного и того же person не перекачивает все raw photos с нуля
 
 ## Troubleshooting
 
 - Если jobs остаются в `queued`, сначала проверьте `/api/health`.
 - Если `workerRuntime` не `ok`, отдельный Python worker не публикует свежий heartbeat и очередь фактически не обслуживается.
 - Если `queuedJobs > 0`, `runningJobs = 0`, а `workerRuntime.error` сообщает про missing/stale heartbeat, consumer очереди не запущен или стартует без service-role ключа.
+- Если job завершилась, но экран не обновился live, проверьте наличие таблиц в `supabase_realtime` publication и ошибки Realtime в браузере.
 - Для локальной проверки используйте `npm run worker`, а не raw `python -m worker.main`.
 
 ## Rollback

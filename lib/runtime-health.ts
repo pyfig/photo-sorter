@@ -58,6 +58,10 @@ export interface RuntimeHealthSnapshot {
       error: string | null;
       queuedJobs: number;
       runningJobs: number;
+      preprocessingJobs: number;
+      finalizingJobs: number;
+      photoTasksQueued: number;
+      photoTasksRunning: number;
       oldestQueuedAt: string | null;
     };
   };
@@ -186,6 +190,10 @@ export async function getRuntimeHealthSnapshot(): Promise<RuntimeHealthSnapshot>
   let supabaseError: string | null = null;
   let queuedJobs = 0;
   let runningJobs = 0;
+  let preprocessingJobs = 0;
+  let finalizingJobs = 0;
+  let photoTasksQueued = 0;
+  let photoTasksRunning = 0;
   let oldestQueuedAt: string | null = null;
   let queueError: string | null = null;
   let heartbeatError: string | null = null;
@@ -198,6 +206,10 @@ export async function getRuntimeHealthSnapshot(): Promise<RuntimeHealthSnapshot>
         { error: workspaceError },
         { count: queuedCount, error: queuedCountError },
         { count: runningCount, error: runningCountError },
+        { count: preprocessingCount, error: preprocessingCountError },
+        { count: finalizingCount, error: finalizingCountError },
+        { count: photoQueuedCount, error: photoQueuedCountError },
+        { count: photoRunningCount, error: photoRunningCountError },
         { data: oldestQueued, error: oldestQueuedError },
         { data: heartbeats, error: heartbeatsError }
       ] = await Promise.all([
@@ -208,6 +220,24 @@ export async function getRuntimeHealthSnapshot(): Promise<RuntimeHealthSnapshot>
           .eq("status", "queued"),
         supabase
           .from("processing_jobs")
+          .select("*", { count: "exact", head: true })
+          .eq("status", "running"),
+        supabase
+          .from("processing_jobs")
+          .select("*", { count: "exact", head: true })
+          .eq("status", "running")
+          .eq("phase", "preprocessing"),
+        supabase
+          .from("processing_jobs")
+          .select("*", { count: "exact", head: true })
+          .eq("status", "running")
+          .eq("phase", "finalizing"),
+        supabase
+          .from("photo_processing_tasks")
+          .select("*", { count: "exact", head: true })
+          .eq("status", "queued"),
+        supabase
+          .from("photo_processing_tasks")
           .select("*", { count: "exact", head: true })
           .eq("status", "running"),
         supabase
@@ -228,15 +258,31 @@ export async function getRuntimeHealthSnapshot(): Promise<RuntimeHealthSnapshot>
       supabaseStatus = workspaceError ? "error" : "ok";
       supabaseError = workspaceError?.message ?? null;
 
-      if (queuedCountError || runningCountError || oldestQueuedError) {
+      if (
+        queuedCountError ||
+        runningCountError ||
+        preprocessingCountError ||
+        finalizingCountError ||
+        photoQueuedCountError ||
+        photoRunningCountError ||
+        oldestQueuedError
+      ) {
         queueError =
           queuedCountError?.message ??
           runningCountError?.message ??
+          preprocessingCountError?.message ??
+          finalizingCountError?.message ??
+          photoQueuedCountError?.message ??
+          photoRunningCountError?.message ??
           oldestQueuedError?.message ??
           "Unknown queue error";
       } else {
         queuedJobs = queuedCount ?? 0;
         runningJobs = runningCount ?? 0;
+        preprocessingJobs = preprocessingCount ?? 0;
+        finalizingJobs = finalizingCount ?? 0;
+        photoTasksQueued = photoQueuedCount ?? 0;
+        photoTasksRunning = photoRunningCount ?? 0;
         oldestQueuedAt = oldestQueued?.[0]?.created_at ?? null;
       }
 
@@ -301,6 +347,10 @@ export async function getRuntimeHealthSnapshot(): Promise<RuntimeHealthSnapshot>
         error: queueError,
         queuedJobs,
         runningJobs,
+        preprocessingJobs,
+        finalizingJobs,
+        photoTasksQueued,
+        photoTasksRunning,
         oldestQueuedAt
       }
     }

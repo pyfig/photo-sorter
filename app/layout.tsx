@@ -59,9 +59,8 @@ export default async function RootLayout({
                 <span className="brand-copy-block">
                   <span className="brand-title-row">
                     <span className="brand-title">Photo Sorter</span>
-                    <span className="brand-badge">solar archive</span>
                   </span>
-                  <span className="brand-copy">Живой архив фотосъёмок и маршрутов обработки</span>
+                  <span className="brand-copy">Загрузка, обработка и результаты в одном месте</span>
                 </span>
               </Link>
               <nav className="topnav">

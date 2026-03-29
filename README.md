@@ -1,6 +1,6 @@
 # Photo Sorter
 
-Photo Sorter - облачный AI-сервис для сортировки фото по лицам с цельным web-интерфейсом в solarpunk-эстетике.
+Photo Sorter - облачный AI-сервис для сортировки фото по лицам с цельным и читаемым web-интерфейсом.
 
 Текущая целевая архитектура:
 
@@ -9,7 +9,7 @@ Photo Sorter - облачный AI-сервис для сортировки фо
 - отдельный `Python worker` для face detection, embeddings и clustering
 - очередь задач через таблицы Supabase
 
-Проект решает сценарий: пользователь загружает пакет фотографий, запускает обработку и получает сгруппированные по людям результаты в браузере.
+Проект решает сценарий: пользователь загружает пакет фотографий, а сервис сразу начинает preprocessing каждой успешно переданной фотографии и автоматически завершает общую обработку после закрытия upload batch.
 
 ## Status
 
@@ -17,6 +17,9 @@ Photo Sorter - облачный AI-сервис для сортировки фо
 
 - актуализированную спецификацию под `Supabase + Vercel`
 - `Next.js` приложение с production-only auth/upload/job flow
+- live-обновление job/workspace через `Supabase Realtime`
+- страницу результата человека с bbox на изображении и face-метриками в футере карточки
+- rename flow для person clusters через существующий `display_name`
 - единый brand mark для favicon и header
 - базовую схему Supabase c RLS, buckets и queue function
 - Python worker для асинхронной обработки jobs
@@ -25,14 +28,16 @@ Photo Sorter - облачный AI-сервис для сортировки фо
 
 End-to-end поток:
 
-1. Пользователь входит в приложение через Supabase Auth.
+1. Пользователь регистрируется или входит в приложение через Supabase Auth по email и паролю.
 2. Если workspace еще нет, создает его в UI.
-3. Создает upload batch и загружает фотографии в `Supabase Storage`.
-4. Web app регистрирует загруженные объекты в таблице `photos`.
-5. Web app создает `processing_job` в Supabase.
-6. Python worker забирает job из очереди.
-7. Worker читает фото из storage, строит face embeddings, кластеризует результаты и пишет их в Postgres.
-8. UI на Vercel читает статусы, кластеры, bbox детектированных лиц и превью из Supabase через signed URLs.
+3. Создает upload batch и запускает bounded-parallel upload фотографий в `Supabase Storage`.
+4. После каждого успешного upload web app сразу регистрирует фото в `photos` и создает `photo_processing_task`.
+5. На первом успешно зарегистрированном фото web app автоматически создает upload-level `processing_job`.
+6. Python worker забирает photo tasks из очереди, строит embeddings и временно складывает их в `staged_faces`.
+7. После закрытия upload batch worker автоматически запускает финальную кластеризацию по всему `job_id` и пишет результат в Postgres.
+8. UI на Vercel читает initial snapshot из Supabase, затем обновляет job/workspace через `Supabase Realtime`.
+9. Пользователь может переименовать группу человека через UI, а `display_name` становится базой для будущего имени папки результата.
+10. Preview изображений читаются через signed URLs, raw photos на странице человека идут через приватный cacheable app route, а метрики лиц читаются в футере карточки без текста поверх лица.
 
 ## Repository Layout
 
@@ -60,7 +65,6 @@ End-to-end поток:
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `SUPABASE_URL`
 - `SUPABASE_DB_PASSWORD`
-- `NEXT_PUBLIC_SITE_URL`
 
 ## Development Commands
 
@@ -79,15 +83,15 @@ npm run worker
 
 - импортировать репозиторий как Next.js project
 - добавить публичные и серверные Supabase env vars
-- настроить `NEXT_PUBLIC_SITE_URL` и auth redirect на `/auth/confirm`
 - деплоить `main` branch
 
 ### Supabase
 
 - создать проект
 - применить SQL migration из `supabase/migrations/`
-- настроить Auth site URL и redirect URLs
-- подключить `Resend SMTP` для magic link delivery
+- оставить `Auth -> Email -> Enable signup` включённым
+- отключить `Auth -> Email -> Confirm email`
+- убедиться, что migration подключила `processing_jobs`, `job_events` и `person_clusters` к `supabase_realtime`
 
 ### Worker
 
@@ -97,16 +101,22 @@ npm run worker
 
 ## Troubleshooting
 
-Если upload доходит до `queued`, а дальше ничего не происходит:
+Если upload дошёл до обработки, но прогресс не движется:
 
 1. Проверьте `/api/health`.
-   Там должен быть `workerRuntime.status = ok`, свежий `last_seen_at` и понятный снимок очереди.
+   Там должен быть `workerRuntime.status = ok`, свежий `last_seen_at`, backlog `queue.photoTasksQueued` / `queue.photoTasksRunning` и понятный снимок очереди.
 2. Проверьте, что worker запущен как long-running process.
    Web app только создаёт job, но не обрабатывает её.
 3. Проверьте `SUPABASE_SERVICE_ROLE_KEY`.
    Без него worker не сможет стартовать, claim'ить jobs, читать приватные buckets и писать heartbeat.
 4. Для локального запуска используйте `npm run worker`.
    Скрипт заранее валидирует env и настроит writable cache directories для ML-библиотек.
+
+Если обработка завершается, но UI не обновляется сам:
+
+1. Проверьте, что migration для `supabase_realtime` применена.
+2. Проверьте, что в браузере есть авторизованная Supabase session.
+3. Проверьте `Network/WebSocket` и убедитесь, что realtime channel не падает в `CHANNEL_ERROR`.
 
 ## Source Of Truth
 

@@ -33,6 +33,7 @@
 - добавить `GET /api/health`
 - добавить `POST /api/workspaces/[workspaceId]/uploads`
 - добавить `POST /api/workspaces/[workspaceId]/uploads/[uploadId]/photos`
+- добавить `POST /api/workspaces/[workspaceId]/uploads/[uploadId]/complete`
 - добавить `POST /api/workspaces/[workspaceId]/jobs`
 
 ## T006. Verification
@@ -44,24 +45,49 @@
 
 ## T007. Auth and onboarding
 
-- реализовать `/login` с email magic link
-- добавить `/auth/confirm`
+- реализовать `/login` с email + password режимами `sign in/sign up`
+- добавить post-auth bootstrap flow без magic link callback
 - добавить middleware для session refresh и защиты приватных routes
 - добавить self-serve workspace creation flow
 
 ## T008. Real upload and results UI
 
 - убрать mock/demo fallback из `lib/data.ts`
-- реализовать upload form с browser-side storage upload
+- реализовать upload form с bounded-parallel browser-side storage upload
 - показать recent clusters и preview images в workspace UI
-- показать signed URLs для preview и raw photos на person page
-- показать bbox и confidence face detector на person page
+- показать signed URLs для preview и cacheable app route для raw photos на person page
+- показать bbox на person page, а confidence и размер лица вынести в footer карточки
 - зафиксировать формат фотокарточки `4:5`, чтобы большие фото не ломали сетку
+
+## T014. Immediate preprocessing pipeline
+
+- добавить `photo_processing_tasks` и `staged_faces`
+- расширить `processing_jobs` полями `phase`, `total_photos`, `processed_photos`
+- создавать upload-level job автоматически на первом зарегистрированном фото
+- запускать preprocessing каждого фото сразу после успешной регистрации
+- завершать финальную кластеризацию только после `sealed_at` и пустой очереди photo tasks
+- обновить `/api/health` и job events под новый pipeline
+
+## T013. Live job updates and cached photo delivery
+
+- добавить `GET /api/workspaces/[workspaceId]` и `GET /api/workspaces/[workspaceId]/jobs/[jobId]` для snapshot refresh
+- добавить приватный route `GET /api/workspaces/[workspaceId]/people/[personId]/photos/[photoId]`
+- подключить `processing_jobs`, `job_events` и `person_clusters` к `supabase_realtime`
+- обновлять job details и workspace overview без ручного refresh страницы
+- добавить fallback polling при деградации realtime
+- добавить browser-side prefetch для первых фото на person page
+
+## T015. Person cluster rename flow
+
+- добавить `PATCH /api/workspaces/[workspaceId]/people/[personId]`
+- разрешить пользователю задавать непустой `display_name` для person cluster
+- показать rename control на странице человека и отразить новое имя в UI без ручного перезахода
+- использовать `display_name` как базу для будущего имени папки при экспорте, без нового поля `folder_name`
 
 ## T009. Production deployment readiness
 
 - обновить `.env.example` под production-only env model
-- задокументировать `Supabase + Resend SMTP + Vercel + Railway` rollout
+- задокументировать `Supabase + Vercel + Railway` rollout без обязательного SMTP
 - улучшить `/api/health` для проверки env и Supabase connectivity
 
 ## T010. SaaS UX pass
@@ -82,9 +108,10 @@
 - добавить brand mark для favicon/tab icon и основного header
 - перевести `layout`, home, login и внутренние экраны на единые typography/color/motion tokens
 - сохранить текущие маршруты, backend contracts и job lifecycle без продуктовых подмен
+- убрать лишний образный naming из UI и проверить text-safe layout для длинных русских строк
 
 ## Next Sprint
 
 - retry/cancel UI для jobs
-- базовый review и rename flow для clusters
+- базовый review flow для clusters
 - улучшение error handling и quotas

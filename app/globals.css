@@ -181,28 +181,15 @@ main::before {
 }
 
 .brand-title {
-  font-size: clamp(1.25rem, 2vw, 1.55rem);
-  line-height: 1;
-}
-
-.brand-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 7px 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(36, 131, 93, 0.18);
-  background: rgba(255, 255, 255, 0.68);
-  color: var(--accent-deep);
-  font-size: 0.76rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: clamp(1.2rem, 1.8vw, 1.45rem);
+  line-height: 1.08;
 }
 
 .brand-copy {
   color: var(--muted);
   font-size: 0.96rem;
-  line-height: 1.45;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 
 .topnav {
@@ -255,7 +242,7 @@ main::before {
 .page-header {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1.18fr) minmax(240px, 340px);
+  grid-template-columns: minmax(0, 1.2fr) minmax(220px, 320px);
   gap: 24px;
   padding: 30px 32px;
   border: 1px solid var(--line);
@@ -264,7 +251,6 @@ main::before {
     radial-gradient(circle at top left, rgba(242, 205, 97, 0.2), transparent 36%),
     linear-gradient(145deg, rgba(255, 251, 244, 0.96), rgba(238, 249, 242, 0.88));
   box-shadow: var(--shadow);
-  overflow: hidden;
 }
 
 .page-header::after {
@@ -299,15 +285,18 @@ main::before {
 }
 
 .page-header h1 {
-  max-width: 13ch;
-  font-size: clamp(2.45rem, 5vw, 4.7rem);
-  line-height: 0.92;
+  max-width: none;
+  font-size: clamp(2.15rem, 4.2vw, 4rem);
+  line-height: 1.04;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
 }
 
 .page-header p {
-  max-width: 62ch;
+  max-width: 58ch;
   color: var(--muted);
   font-size: 1.02rem;
+  overflow-wrap: anywhere;
 }
 
 .eyebrow {
@@ -321,8 +310,7 @@ main::before {
   color: var(--accent-deep);
   font-size: 0.78rem;
   font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .page-header-visual {
@@ -482,8 +470,8 @@ main::before {
   color: var(--accent-deep);
   font-size: 0.8rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  overflow-wrap: anywhere;
 }
 
 .summary-card-value {
@@ -520,6 +508,7 @@ main::before {
 .empty-state h2,
 .journey-card h2 {
   line-height: 1.06;
+  overflow-wrap: anywhere;
 }
 
 .workspace-meta,
@@ -794,6 +783,46 @@ main::before {
   word-break: break-all;
 }
 
+.photo-face-metrics {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.photo-face-metrics-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(36, 131, 93, 0.14);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(244, 250, 242, 0.82)),
+    rgba(255, 255, 255, 0.72);
+}
+
+.photo-face-metrics-label {
+  font-size: 0.83rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.photo-face-metric-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(24, 20, 16, 0.08);
+  color: var(--accent-deep);
+  font-size: 0.79rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
 .face-overlay-layer {
   position: absolute;
   inset: 0;
@@ -809,23 +838,42 @@ main::before {
     inset 0 0 0 1px rgba(255, 250, 241, 0.4);
 }
 
-.face-box-label {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  display: inline-flex;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: rgba(24, 20, 16, 0.86);
-  color: white;
-  font-size: 0.78rem;
-  font-weight: 700;
-  line-height: 1.1;
-}
-
 .form-grid {
   display: grid;
   gap: 16px;
+}
+
+.auth-mode-switch {
+  display: inline-flex;
+  gap: 8px;
+  padding: 6px;
+  border-radius: 999px;
+  background: rgba(36, 131, 93, 0.08);
+}
+
+.auth-mode-button {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: transparent;
+  color: var(--accent-deep);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.auth-mode-button.is-active {
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 10px 24px rgba(32, 85, 58, 0.12);
+}
+
+.auth-mode-button:focus-visible {
+  outline: 2px solid rgba(36, 131, 93, 0.22);
+  outline-offset: 2px;
 }
 
 .field {
@@ -1166,7 +1214,7 @@ main::before {
     grid-template-columns: 1fr;
   }
 
-  .page-header h1 {
+.page-header h1 {
     max-width: none;
   }
 
@@ -1201,7 +1249,8 @@ main::before {
   }
 
   .page-header h1 {
-    line-height: 0.98;
+    font-size: clamp(1.95rem, 9vw, 2.8rem);
+    line-height: 1.08;
   }
 
   .workspace-card-top,

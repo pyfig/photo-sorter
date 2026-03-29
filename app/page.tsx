@@ -30,7 +30,7 @@ function describeWorkspaceState(workspace: WorkspaceSummary) {
 
     return {
       pill: "Готовый набор",
-      description: `Внутри уже ${workspace.totalPhotos} фото. Можно сразу открыть workspace и запустить распознавание людей.`
+      description: `Внутри уже ${workspace.totalPhotos} фото. Можно сразу открыть workspace и посмотреть автоматический pipeline распознавания людей.`
     };
   }
 
@@ -57,7 +57,7 @@ function describeWorkspaceState(workspace: WorkspaceSummary) {
 
   return {
     pill: "Фото загружены",
-    description: "Фотографии на месте. Можно запускать следующую обработку и смотреть статус."
+    description: "Фотографии на месте. Следующий pipeline стартует автоматически при новой загрузке, а статус уже можно открыть."
   };
 }
 
@@ -110,16 +110,16 @@ export default async function HomePage() {
   return (
     <>
       <PageHeader
-        eyebrow="Солнечная навигация"
-        title="Откройте общий архив или соберите свой маршрут обработки"
-        description="Photo Sorter собирает загруженные фотографии, очереди и готовые группы людей в один спокойный центр управления. Общий workspace уже доступен сразу после входа, а отдельный проект можно создать за минуту."
+        eyebrow="Проекты"
+        title="Откройте готовый набор или создайте свой workspace"
+        description="Photo Sorter собирает загрузки, очереди и результаты в одном интерфейсе. Общий workspace уже доступен после входа, а отдельный проект можно создать за минуту."
       />
 
       <section className="hero-band" style={{ marginBottom: 24 }}>
         <article className="panel panel-highlight">
           <div className="section-heading">
-            <h2>Что уже готово внутри</h2>
-            <span className="muted">Общий набор, отдельные проекты и понятный путь от загрузки к результату</span>
+            <h2>Что доступно сразу</h2>
+            <span className="muted">Готовый набор, отдельные проекты и понятный путь от загрузки к результату</span>
           </div>
           <div className="list-inline hero-ribbon">
             <span>Проектов: {workspaces.length}</span>
@@ -128,9 +128,9 @@ export default async function HomePage() {
             <span>Готовых результатов: {totals.clusters}</span>
           </div>
           <p className="muted">
-            Общий набор TechCommunity Fest помогает зайти в систему без пустого экрана, а
-            отдельные workspaces позволяют аккуратно развести клиентские и внутренние
-            съёмки по разным потокам.
+            Готовый набор помогает быстро увидеть весь рабочий цикл без пустого экрана, а
+            отдельные workspaces позволяют разнести клиентские и внутренние съёмки по
+            разным проектам.
           </p>
           <div className="actions">
             {sharedWorkspace ? (
@@ -139,22 +139,22 @@ export default async function HomePage() {
               </Link>
             ) : null}
             <Link className="button-secondary" href="#create-workspace">
-              Собрать новый workspace
+              Создать workspace
             </Link>
           </div>
         </article>
 
-        <aside className="ecosystem-map" aria-label="Карта потока">
+        <aside className="ecosystem-map" aria-label="Обзор возможностей">
           <article className="ecosystem-node ecosystem-node-primary">
-            <strong>Общий набор</strong>
-            <p>Предзагруженные фотографии и быстрый вход в рабочий ритм.</p>
+            <strong>Готовый набор</strong>
+            <p>Предзагруженные фотографии и быстрый старт без пустого состояния.</p>
           </article>
           <article className="ecosystem-node">
-            <strong>Личный проект</strong>
-            <p>Отдельная зона для съёмки клиента, события или архива.</p>
+            <strong>Отдельный проект</strong>
+            <p>Изолированная рабочая зона для клиента, события или архива.</p>
           </article>
           <article className="ecosystem-node ecosystem-node-soft">
-            <strong>Готовые люди</strong>
+            <strong>Результаты</strong>
             <p>Результаты появляются по мере завершения обработки и остаются под рукой.</p>
           </article>
         </aside>
@@ -163,17 +163,17 @@ export default async function HomePage() {
       <section className="journey-grid" style={{ marginBottom: 24 }}>
         <article className="journey-card">
           <span className="journey-step">1</span>
-          <h2>Зайдите через готовый общий набор</h2>
-          <p>Общий workspace уже содержит предзагруженные фотографии и помогает быстро увидеть весь рабочий цикл без пустых состояний.</p>
+          <h2>Откройте готовый набор</h2>
+          <p>Общий workspace уже содержит предзагруженные фотографии и помогает быстро проверить весь рабочий цикл.</p>
         </article>
         <article className="journey-card">
           <span className="journey-step">2</span>
-          <h2>Разведите съёмки по отдельным зонам</h2>
+          <h2>Создайте отдельный проект</h2>
           <p>Если нужен самостоятельный поток под клиента или событие, создайте свой workspace одной кнопкой прямо из dashboard.</p>
         </article>
         <article className="journey-card">
           <span className="journey-step">3</span>
-          <h2>Следите за ростом результата</h2>
+          <h2>Откройте результат</h2>
           <p>Открывайте прогресс, журнал событий и готовые группы людей по мере завершения обработки.</p>
         </article>
       </section>
@@ -187,11 +187,10 @@ export default async function HomePage() {
 
       <section className="panel" style={{ marginBottom: 24 }}>
         <div className="panel-intro">
-          <h2>Быстрый путь без лишних решений</h2>
+          <h2>С чего начать</h2>
           <p className="muted">
             Если нужно быстро проверить поток end-to-end, откройте общий workspace. Если
-            нужно изолировать клиентскую или внутреннюю съёмку, сразу создайте новый проект
-            ниже и работайте в отдельной зоне.
+            нужен отдельный проект для клиента или внутренней съёмки, создайте его ниже.
           </p>
         </div>
         <div className="actions">
@@ -210,7 +209,7 @@ export default async function HomePage() {
         <section className="grid">
           <EmptyState
             title="Пока нет ни одного проекта"
-            description="Создайте первый проект, чтобы загрузить съёмку, запустить обработку и открыть результат в одном аккуратном контуре."
+            description="Создайте первый проект, чтобы загрузить съёмку, автоматически запустить обработку и открыть результат в одном аккуратном контуре."
           />
           <WorkspaceOnboardingForm />
         </section>
@@ -266,7 +265,7 @@ export default async function HomePage() {
       <section className="split-layout" id="create-workspace" style={{ marginTop: 24 }}>
         <section className="panel panel-highlight">
           <div className="panel-intro">
-            <h2>Новый рабочий контур</h2>
+            <h2>Новый проект</h2>
             <p className="muted">
               Отдельный workspace помогает не смешивать архивы, очереди и результаты между
               разными клиентами, событиями и внутренними съёмками.

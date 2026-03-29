@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 
 import { hasRequiredWebEnv } from "@/lib/env";
 
-const publicRoutes = new Set(["/login", "/auth/confirm"]);
+const publicRoutes = new Set(["/login"]);
 
 export async function updateSupabaseSession(request: NextRequest) {
   if (!hasRequiredWebEnv()) {

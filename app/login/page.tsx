@@ -19,7 +19,7 @@ export default async function LoginPage({
         <PageHeader
           eyebrow="Настройка"
           title="Вход пока недоступен"
-          description="Чтобы отправлять ссылки для входа по email, приложению нужен рабочий Supabase Auth."
+          description="Чтобы входить по email и паролю, приложению нужен рабочий Supabase Auth."
         />
         <ConfigurationState
           description="Настройте `NEXT_PUBLIC_SUPABASE_URL` и `NEXT_PUBLIC_SUPABASE_ANON_KEY`, затем повторите вход."
@@ -45,8 +45,8 @@ export default async function LoginPage({
     <>
       <PageHeader
         eyebrow="Вход"
-        title="Откройте свои проекты по ссылке из письма"
-        description="Один email, без пароля. После входа вы сразу попадёте в общий архив и сможете открыть свои workspaces, загрузки и результаты в едином рабочем контуре."
+        title="Войдите в свои проекты по email и паролю"
+        description="Одна форма для входа и регистрации. После авторизации вы сможете открыть свои workspaces, загрузки и результаты в одном интерфейсе."
       />
       <section className="split-layout">
         <LoginForm message={params.message} nextPath={params.next} />
@@ -61,7 +61,7 @@ export default async function LoginPage({
           <div className="check-list">
             <article className="check-card">
               <strong>Откройте общий набор</strong>
-              <p>Сразу увидите, как выглядят загрузки, очереди и готовые результаты без пустого dashboard.</p>
+              <p>Сразу увидите, как выглядят загрузки, очереди и готовые результаты без пустого экрана.</p>
             </article>
             <article className="check-card">
               <strong>Создайте свой проект</strong>

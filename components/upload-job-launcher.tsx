@@ -35,7 +35,7 @@ export function UploadJobLauncher({
       };
 
       if (!response.ok || !payload.job) {
-        throw new Error(payload.error ?? "Не удалось запустить обработку");
+        throw new Error(payload.error ?? "Не удалось запустить повторную обработку");
       }
 
       router.push(`/workspaces/${workspaceId}/jobs/${payload.job.id}`);
@@ -44,7 +44,7 @@ export function UploadJobLauncher({
       setError(
         launchError instanceof Error
           ? launchError.message
-          : "Не удалось запустить обработку"
+          : "Не удалось запустить повторную обработку"
       );
     } finally {
       setIsSubmitting(false);
@@ -59,7 +59,7 @@ export function UploadJobLauncher({
         onClick={handleLaunch}
         type="button"
       >
-        {isSubmitting ? "Запускаем..." : "Запустить обработку"}
+        {isSubmitting ? "Запускаем..." : "Запустить повторно"}
       </button>
       {error ? <span className="muted">{error}</span> : null}
     </div>

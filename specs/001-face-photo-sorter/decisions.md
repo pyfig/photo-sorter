@@ -64,7 +64,7 @@
 
 - RLS и workspace isolation обязательны уже в первой версии
 
-## D007. Authentication uses email magic link only in v1
+## D007. Authentication uses email + password only in v1
 
 Статус:
 
@@ -72,7 +72,8 @@
 
 Следствие:
 
-- `/login` и `/auth/confirm` обязательны
+- `/login` обязателен, отдельный magic link callback route не нужен
+- регистрация и повторный вход используют `Supabase Auth` password flow
 - OAuth провайдеры откладываются за пределы текущей итерации
 
 ## D008. No demo fallback in production-oriented runtime
@@ -90,7 +91,7 @@
 - отсутствие env должно проявляться как setup/degraded ошибка
 - mock данные удаляются из `lib/data.ts` и из пользовательских маршрутов
 
-## D009. Email delivery for magic links goes through custom SMTP
+## D009. Email delivery is not required for the default v1 auth flow
 
 Статус:
 
@@ -98,7 +99,7 @@
 
 Следствие:
 
-- production auth rollout должен включать `Resend SMTP` в Supabase Auth конфигурации
+- production auth rollout не зависит от SMTP для login/signup
 
 ## D010. Workspace creation is self-serve from the web UI
 
@@ -126,7 +127,7 @@
 - worker пишет liveness в `worker_heartbeats`
 - `/api/health` и queued-job diagnostics опираются на свежесть heartbeat, а не только на env
 
-## D012. Web UI uses a shared solarpunk design system without changing product contracts
+## D012. Web UI uses a shared nature-inspired design system without changing product contracts
 
 Статус:
 
@@ -141,3 +142,39 @@
 - редизайн выполняется в presentation layer через `layout`, shared components, CSS tokens и icon asset
 - иконка для tab bar и знак в header должны быть одним и тем же brand mark
 - шрифты выбираются только с гарантированной поддержкой `latin` и `cyrillic`
+- тексты интерфейса остаются продуктовыми и прямыми; образный визуальный слой не должен превращаться в naming системы
+
+## D013. Live job and workspace updates use Supabase Realtime
+
+Статус:
+
+- accepted
+
+Причина:
+
+- проект уже хранит источник истины в Supabase, поэтому отдельный websocket backend на Vercel не нужен
+- Realtime позволяет обновлять `processing_jobs`, `job_events` и `person_clusters` без ручного refresh страницы
+
+Следствие:
+
+- migration должна подключать нужные таблицы к `supabase_realtime` publication
+- UI обязан иметь fallback polling, если realtime-канал деградировал
+- realtime rollout не должен менять job lifecycle или worker contracts
+
+## D014. Upload pipeline is split into immediate photo preprocessing and deferred final clustering
+
+Статус:
+
+- accepted
+
+Причина:
+
+- пользователю нужен overlap между загрузкой и обработкой, чтобы время от первого фото до первых результатов не терялось на последовательной batch-передаче
+- при этом итоговая кластеризация должна видеть всю подборку, а не только отдельные кадры
+
+Следствие:
+
+- web app грузит фотографии bounded-parallel и регистрирует каждое успешно загруженное фото сразу
+- upload-level `processing_job` создаётся автоматически на первом зарегистрированном фото и остаётся единственной публичной сущностью job для UI
+- worker использует внутренние `photo_processing_tasks` и `staged_faces`, а финальную кластеризацию запускает только после `photo_uploads.sealed_at`
+- `/uploads/[uploadId]/complete` становится обязательной частью upload flow

@@ -11,6 +11,14 @@ import type {
   WorkspaceSummary
 } from "@/lib/types";
 
+export function buildPersonPhotoUrl(
+  workspaceId: string,
+  personId: string,
+  photoId: string
+): string {
+  return `/api/workspaces/${workspaceId}/people/${personId}/photos/${photoId}`;
+}
+
 async function getCurrentUserId() {
   const supabase = await createSupabaseServerClient();
   const {
@@ -145,7 +153,9 @@ export async function getWorkspaceOverview(
       .eq("workspace_id", workspaceId),
     supabase
       .from("processing_jobs")
-      .select("id, status, progress_percent, created_at, finished_at")
+      .select(
+        "id, status, phase, progress_percent, total_photos, processed_photos, created_at, finished_at"
+      )
       .eq("workspace_id", workspaceId)
       .order("created_at", { ascending: false })
       .limit(5),
@@ -169,7 +179,13 @@ export async function getWorkspaceOverview(
     jobs?.map((job: Record<string, unknown>) => ({
       id: String(job.id),
       status: String(job.status) as RecentJob["status"],
+      phase:
+        job.phase === null || job.phase === undefined
+          ? null
+          : (String(job.phase) as RecentJob["phase"]),
       progressPercent: Number(job.progress_percent ?? 0),
+      totalPhotos: Number(job.total_photos ?? 0),
+      processedPhotos: Number(job.processed_photos ?? 0),
       createdAt: String(job.created_at),
       finishedAt: job.finished_at ? String(job.finished_at) : null
     })) ?? [];
@@ -212,7 +228,7 @@ export async function getJobDetails(
     supabase
       .from("processing_jobs")
       .select(
-        "id, status, progress_percent, error_message, started_at, finished_at, created_at, input_batch_id"
+        "id, status, phase, progress_percent, total_photos, processed_photos, error_message, started_at, finished_at, created_at, input_batch_id"
       )
       .eq("workspace_id", workspaceId)
       .eq("id", jobId)
@@ -232,7 +248,13 @@ export async function getJobDetails(
   return {
     id: String(job.id),
     status: String(job.status ?? "queued") as JobDetails["status"],
+    phase:
+      job.phase === null || job.phase === undefined
+        ? null
+        : (String(job.phase) as JobDetails["phase"]),
     progressPercent: Number(job.progress_percent ?? 0),
+    totalPhotos: Number(job.total_photos ?? 0),
+    processedPhotos: Number(job.processed_photos ?? 0),
     errorMessage: job.error_message ? String(job.error_message) : null,
     startedAt: job.started_at ? String(job.started_at) : null,
     finishedAt: job.finished_at ? String(job.finished_at) : null,
@@ -332,7 +354,7 @@ export async function getPersonDetails(
         return {
           id: String(photo.id),
           storagePath,
-          signedUrl: await createSignedUrl(supabase, "raw-photos", storagePath),
+          imageUrl: buildPersonPhotoUrl(workspaceId, personId, String(photo.id)),
           faces: (facesByPhotoId.get(String(photo.id)) ?? []).sort((left, right) => {
             const leftConfidence = left.confidence ?? -1;
             const rightConfidence = right.confidence ?? -1;
@@ -352,7 +374,7 @@ export async function listUploadsForWorkspace(
 
   const { data, error } = await supabase
     .from("photo_uploads")
-    .select("id, name, status, created_at")
+    .select("id, name, status, sealed_at, created_at")
     .eq("workspace_id", workspaceId)
     .order("created_at", { ascending: false })
     .limit(10);
@@ -361,10 +383,76 @@ export async function listUploadsForWorkspace(
     return [];
   }
 
-  return data.map((upload: Record<string, unknown>) => ({
-    id: String(upload.id),
-    name: String(upload.name ?? "Upload"),
-    status: String(upload.status ?? "uploading") as UploadSummary["status"],
-    createdAt: String(upload.created_at ?? new Date().toISOString())
-  }));
+  if (data.length === 0) {
+    return [];
+  }
+
+  const uploadIds = data.map((upload: Record<string, unknown>) => String(upload.id));
+
+  const [{ data: jobs }, registeredCounts] = await Promise.all([
+    supabase
+      .from("processing_jobs")
+      .select(
+        "id, input_batch_id, status, phase, total_photos, processed_photos, progress_percent, created_at"
+      )
+      .in("input_batch_id", uploadIds)
+      .order("created_at", { ascending: false }),
+    Promise.all(
+      uploadIds.map(async (uploadId) => {
+        const { count } = await supabase
+          .from("photos")
+          .select("*", { count: "exact", head: true })
+          .eq("upload_id", uploadId);
+
+        return [uploadId, count ?? 0] as const;
+      })
+    )
+  ]);
+
+  const latestJobByUploadId = new Map<string, Record<string, unknown>>();
+  for (const job of jobs ?? []) {
+    const uploadId = String(job.input_batch_id ?? "");
+    if (!uploadId || latestJobByUploadId.has(uploadId)) {
+      continue;
+    }
+
+    latestJobByUploadId.set(uploadId, job as Record<string, unknown>);
+  }
+
+  const registeredCountByUploadId = new Map(registeredCounts);
+
+  return data.map((upload: Record<string, unknown>) => {
+    const uploadId = String(upload.id);
+    const latestJob = latestJobByUploadId.get(uploadId);
+
+    return {
+      id: uploadId,
+      name: String(upload.name ?? "Upload"),
+      status: String(upload.status ?? "uploading") as UploadSummary["status"],
+      sealedAt:
+        upload.sealed_at === null || upload.sealed_at === undefined
+          ? null
+          : String(upload.sealed_at),
+      registeredPhotos: registeredCountByUploadId.get(uploadId) ?? 0,
+      jobId:
+        latestJob?.id === null || latestJob?.id === undefined
+          ? null
+          : String(latestJob.id),
+      jobStatus:
+        latestJob?.status === null || latestJob?.status === undefined
+          ? null
+          : (String(latestJob.status) as UploadSummary["jobStatus"]),
+      jobPhase:
+        latestJob?.phase === null || latestJob?.phase === undefined
+          ? null
+          : (String(latestJob.phase) as UploadSummary["jobPhase"]),
+      totalPhotos: Number(latestJob?.total_photos ?? 0),
+      processedPhotos: Number(latestJob?.processed_photos ?? 0),
+      progressPercent:
+        latestJob?.progress_percent === null || latestJob?.progress_percent === undefined
+          ? null
+          : Number(latestJob.progress_percent),
+      createdAt: String(upload.created_at ?? new Date().toISOString())
+    };
+  });
 }

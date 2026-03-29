@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { hasRequiredWebEnv } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import {
+  activateProcessingJob,
+  createUploadProcessingJob,
+  enqueuePhotoTasks,
+  findActiveUploadJob,
+  syncProcessingJobProgress
+} from "@/lib/upload-pipeline";
 
 interface JobRequestBody {
   uploadId?: string;
@@ -45,34 +52,82 @@ export async function POST(
     );
   }
 
-  const { data: job, error: jobError } = await supabase
-    .from("processing_jobs")
-    .insert({
-      workspace_id: workspaceId,
-      input_batch_id: body.uploadId,
-      status: "queued",
-      progress_percent: 0,
-      created_by: authData.user.id
-    })
-    .select("id, workspace_id, input_batch_id, status, progress_percent")
-    .single();
-
-  if (jobError) {
-    return NextResponse.json({ error: jobError.message }, { status: 500 });
+  const existingJob = await findActiveUploadJob(supabase, workspaceId, body.uploadId);
+  if (existingJob) {
+    return NextResponse.json(
+      {
+        job: {
+          id: existingJob.id,
+          status: existingJob.status,
+          phase: existingJob.phase,
+          progressPercent: existingJob.progress_percent ?? 0,
+          totalPhotos: existingJob.total_photos ?? 0,
+          processedPhotos: existingJob.processed_photos ?? 0
+        }
+      },
+      { status: 200 }
+    );
   }
 
-  const { error: eventError } = await supabase.from("job_events").insert({
-    job_id: job.id,
-    event_type: "job_created",
-    payload: {
-      source: "web-api",
-      upload_id: body.uploadId
-    }
-  });
+  const { data: photos, error: photosError } = await supabase
+    .from("photos")
+    .select("id, storage_path")
+    .eq("upload_id", body.uploadId)
+    .order("created_at", { ascending: true });
 
-  if (eventError) {
-    return NextResponse.json({ error: eventError.message }, { status: 500 });
+  if (photosError) {
+    return NextResponse.json({ error: photosError.message }, { status: 500 });
   }
 
-  return NextResponse.json({ job }, { status: 201 });
+  if (!photos || photos.length === 0) {
+    return NextResponse.json(
+      { error: "Upload batch has no registered photos" },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const job = await createUploadProcessingJob(
+      supabase,
+      workspaceId,
+      body.uploadId,
+      authData.user.id
+    );
+
+    await enqueuePhotoTasks(
+      supabase,
+      workspaceId,
+      body.uploadId,
+      job.id,
+      photos.map((photo: Record<string, unknown>) => ({
+        id: String(photo.id),
+        storage_path: String(photo.storage_path)
+        }))
+    );
+
+    await activateProcessingJob(supabase, job.id);
+    const syncedJob = await syncProcessingJobProgress(supabase, job.id);
+
+    return NextResponse.json(
+      {
+        job: {
+          id: syncedJob.id,
+          status: syncedJob.status,
+          phase: syncedJob.phase,
+          progressPercent: syncedJob.progress_percent ?? 0,
+          totalPhotos: syncedJob.total_photos ?? 0,
+          processedPhotos: syncedJob.processed_photos ?? 0
+        }
+      },
+      { status: 201 }
+    );
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error ? error.message : "Не удалось создать processing job"
+      },
+      { status: 500 }
+    );
+  }
 }

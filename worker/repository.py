@@ -6,7 +6,38 @@ from typing import Any
 from supabase import Client, create_client
 
 from worker.config import Settings
-from worker.models import PhotoRecord, QueuedJob
+from worker.models import PhotoProcessingTask, PhotoRecord, ProcessingJob, StagedFaceRecord
+
+
+def _unwrap_single_row(data: Any) -> dict[str, Any] | None:
+    if not data:
+        return None
+
+    if isinstance(data, list):
+        data = data[0] if data else None
+
+    if not isinstance(data, dict):
+        return None
+
+    return data
+
+
+def _parse_bbox(value: Any) -> tuple[float, float, float, float] | None:
+    if not isinstance(value, dict):
+        return None
+
+    try:
+        x1 = float(value["x1"])
+        y1 = float(value["y1"])
+        x2 = float(value["x2"])
+        y2 = float(value["y2"])
+    except (KeyError, TypeError, ValueError):
+        return None
+
+    if x2 <= x1 or y2 <= y1:
+        return None
+
+    return (x1, y1, x2, y2)
 
 
 class WorkerRepository:
@@ -17,53 +48,108 @@ class WorkerRepository:
             settings.supabase_service_role_key,
         )
 
-    def claim_next_job(self, worker_id: str) -> QueuedJob | None:
+    def claim_next_photo_task(self, worker_id: str) -> PhotoProcessingTask | None:
         response = self.client.rpc(
-            "claim_next_processing_job",
+            "claim_next_photo_processing_task",
             {"worker_name": worker_id},
         ).execute()
 
-        row = response.data
+        row = _unwrap_single_row(response.data)
         if not row:
             return None
 
-        if isinstance(row, list):
-            row = row[0] if row else None
+        required = ("id", "workspace_id", "upload_id", "photo_id", "job_id", "status")
+        if any(not row.get(field) for field in required):
+            return None
 
+        return PhotoProcessingTask(
+            id=row["id"],
+            workspace_id=row["workspace_id"],
+            upload_id=row["upload_id"],
+            photo_id=row["photo_id"],
+            job_id=row["job_id"],
+            status=row["status"],
+        )
+
+    def claim_next_finalizable_job(self, worker_id: str) -> ProcessingJob | None:
+        response = self.client.rpc(
+            "claim_next_finalizable_processing_job",
+            {"worker_name": worker_id},
+        ).execute()
+
+        row = _unwrap_single_row(response.data)
         if not row:
             return None
 
-        if not isinstance(row, dict):
+        required = ("id", "workspace_id", "input_batch_id", "status", "phase")
+        if any(not row.get(field) for field in required):
             return None
 
-        if not row.get("id") or not row.get("workspace_id") or not row.get("input_batch_id"):
-            return None
-
-        return QueuedJob(
+        return ProcessingJob(
             id=row["id"],
             workspace_id=row["workspace_id"],
             input_batch_id=row["input_batch_id"],
             status=row["status"],
+            phase=row["phase"],
+            total_photos=int(row.get("total_photos") or 0),
+            processed_photos=int(row.get("processed_photos") or 0),
         )
 
-    def get_job_photos(self, upload_id: str) -> list[PhotoRecord]:
+    def get_photo(self, photo_id: str) -> PhotoRecord | None:
         response = (
             self.client.table("photos")
             .select("id, workspace_id, upload_id, storage_path")
-            .eq("upload_id", upload_id)
+            .eq("id", photo_id)
+            .limit(1)
+            .execute()
+        )
+
+        row = _unwrap_single_row(response.data)
+        if not row:
+            return None
+
+        return PhotoRecord(
+            id=row["id"],
+            workspace_id=row["workspace_id"],
+            upload_id=row["upload_id"],
+            storage_path=row["storage_path"],
+        )
+
+    def get_staged_faces_for_job(self, job_id: str) -> list[StagedFaceRecord]:
+        response = (
+            self.client.table("staged_faces")
+            .select("photo_id, storage_path, bbox, confidence, embedding")
+            .eq("job_id", job_id)
             .order("created_at", desc=False)
             .execute()
         )
 
-        return [
-            PhotoRecord(
-                id=row["id"],
-                workspace_id=row["workspace_id"],
-                upload_id=row["upload_id"],
-                storage_path=row["storage_path"],
+        faces: list[StagedFaceRecord] = []
+        for row in response.data or []:
+            bbox = _parse_bbox(row.get("bbox"))
+            if not bbox:
+                continue
+
+            embedding = row.get("embedding")
+            if not isinstance(embedding, list):
+                continue
+
+            face_area = (bbox[2] - bbox[0]) * (bbox[3] - bbox[1])
+            faces.append(
+                StagedFaceRecord(
+                    photo_id=row["photo_id"],
+                    storage_path=row["storage_path"],
+                    bbox=bbox,
+                    confidence=float(row.get("confidence") or 0.0),
+                    embedding=embedding,
+                    face_area=face_area,
+                )
             )
-            for row in (response.data or [])
-        ]
+
+        return faces
+
+    def clear_staged_faces(self, job_id: str) -> None:
+        self.client.table("staged_faces").delete().eq("job_id", job_id).execute()
 
     def download_raw_photo(self, storage_path: str) -> bytes:
         return self.client.storage.from_("raw-photos").download(storage_path)
@@ -75,6 +161,105 @@ class WorkerRepository:
             {"content-type": "image/jpeg"},
         )
         return path
+
+    def insert_staged_faces(self, rows: list[dict[str, Any]]) -> None:
+        if not rows:
+            return
+
+        self.client.table("staged_faces").insert(rows).execute()
+
+    def mark_photo_task_completed(self, task_id: str) -> None:
+        (
+            self.client.table("photo_processing_tasks")
+            .update(
+                {
+                    "status": "completed",
+                    "finished_at": datetime.now(timezone.utc).isoformat(),
+                    "error_message": None,
+                }
+            )
+            .eq("id", task_id)
+            .execute()
+        )
+
+    def mark_photo_task_failed(self, task_id: str, message: str) -> None:
+        (
+            self.client.table("photo_processing_tasks")
+            .update(
+                {
+                    "status": "failed",
+                    "finished_at": datetime.now(timezone.utc).isoformat(),
+                    "error_message": message,
+                }
+            )
+            .eq("id", task_id)
+            .execute()
+        )
+
+    def sync_job_progress(self, job_id: str) -> ProcessingJob:
+        job_response = (
+            self.client.table("processing_jobs")
+            .select("id, workspace_id, input_batch_id, status, phase, progress_percent")
+            .eq("id", job_id)
+            .limit(1)
+            .execute()
+        )
+        row = _unwrap_single_row(job_response.data)
+        if not row:
+            raise RuntimeError(f"processing_job {job_id} not found")
+
+        total_response = (
+            self.client.table("photo_processing_tasks")
+            .select("id", count="exact")
+            .eq("job_id", job_id)
+            .execute()
+        )
+        processed_response = (
+            self.client.table("photo_processing_tasks")
+            .select("id", count="exact")
+            .eq("job_id", job_id)
+            .in_("status", ["completed", "failed"])
+            .execute()
+        )
+
+        total_photos = int(total_response.count or 0)
+        processed_photos = int(processed_response.count or 0)
+        phase = str(row.get("phase") or "preprocessing")
+        current_progress = int(row.get("progress_percent") or 0)
+
+        if phase == "finalizing":
+            progress_percent = max(current_progress, 85)
+        elif total_photos <= 0:
+            progress_percent = max(current_progress, 1)
+        else:
+            progress_percent = max(
+                1,
+                min(80, round((processed_photos / total_photos) * 80)),
+            )
+
+        update_response = (
+            self.client.table("processing_jobs")
+            .update(
+                {
+                    "total_photos": total_photos,
+                    "processed_photos": processed_photos,
+                    "progress_percent": progress_percent,
+                }
+            )
+            .eq("id", job_id)
+            .execute()
+        )
+
+        updated = _unwrap_single_row(update_response.data) or {}
+        return ProcessingJob(
+            id=str(updated.get("id") or row["id"]),
+            workspace_id=str(updated.get("workspace_id") or row["workspace_id"]),
+            input_batch_id=str(updated.get("input_batch_id") or row["input_batch_id"]),
+            status=str(updated.get("status") or row["status"]),
+            phase=str(updated.get("phase") or phase),
+            total_photos=total_photos,
+            processed_photos=processed_photos,
+        )
 
     def update_job_progress(self, job_id: str, progress_percent: int) -> None:
         (

@@ -1,4 +1,5 @@
 export type JobStatus = "queued" | "running" | "completed" | "failed" | "cancelled";
+export type JobPhase = "preprocessing" | "finalizing" | null;
 
 export interface WorkspaceSummary {
   id: string;
@@ -14,7 +15,10 @@ export interface WorkspaceSummary {
 export interface RecentJob {
   id: string;
   status: JobStatus;
+  phase: JobPhase;
   progressPercent: number;
+  totalPhotos: number;
+  processedPhotos: number;
   createdAt: string;
   finishedAt: string | null;
 }
@@ -44,6 +48,14 @@ export interface UploadSummary {
   id: string;
   name: string;
   status: "uploading" | "uploaded" | "failed";
+  sealedAt: string | null;
+  registeredPhotos: number;
+  jobId: string | null;
+  jobStatus: JobStatus | null;
+  jobPhase: JobPhase;
+  totalPhotos: number;
+  processedPhotos: number;
+  progressPercent: number | null;
   createdAt: string;
 }
 
@@ -57,7 +69,10 @@ export interface JobEvent {
 export interface JobDetails {
   id: string;
   status: JobStatus;
+  phase: JobPhase;
   progressPercent: number;
+  totalPhotos: number;
+  processedPhotos: number;
   errorMessage: string | null;
   startedAt: string | null;
   finishedAt: string | null;
@@ -69,7 +84,7 @@ export interface JobDetails {
 export interface PersonPhoto {
   id: string;
   storagePath: string;
-  signedUrl: string | null;
+  imageUrl: string | null;
   faces: DetectedFaceBox[];
 }
 

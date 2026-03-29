@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
+import { PersonClusterNameEditor } from "@/components/person-cluster-name-editor";
 import { PersonPhotoGallery } from "@/components/person-photo-gallery";
 import { SummaryCard } from "@/components/summary-card";
 import { getPersonDetails } from "@/lib/data";
@@ -29,6 +30,12 @@ export default async function PersonPage({
         description="Здесь собраны фотографии, которые сервис отнёс к одному и тому же человеку, чтобы итог сортировки можно было проверить в одном месте."
       />
 
+      <PersonClusterNameEditor
+        initialDisplayName={person.displayName}
+        personId={personId}
+        workspaceId={workspaceId}
+      />
+
       <section className="grid cards" style={{ marginBottom: 24 }}>
         <SummaryCard label="Фото в группе" value={person.photoCount} hint="Сколько кадров сервис связал с этим человеком" />
         <SummaryCard
@@ -44,7 +51,7 @@ export default async function PersonPage({
         <div className="preview-box">
           {person.previewUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img alt={person.displayName} className="preview-image" src={person.previewUrl} />
+            <img alt={person.displayName} className="preview-image" loading="eager" src={person.previewUrl} />
           ) : (
             "Превью появится после завершения обработки."
           )}
@@ -55,7 +62,7 @@ export default async function PersonPage({
         <div className="section-heading">
           <h2>Все фотографии в этой группе</h2>
           <span className="muted">
-            Карточки ниже показывают рамку детектированного лица и confidence детектора в процентах
+            Карточки ниже показывают рамку лица на фото, а confidence и размер лица вынесены в футер
           </span>
         </div>
 

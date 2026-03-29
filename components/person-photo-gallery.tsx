@@ -22,6 +22,22 @@ function formatConfidence(confidence: number | null): string | null {
   return `${Math.round(confidence * 1000) / 10}%`;
 }
 
+function formatFaceArea(face: DetectedFaceBox, natural: Size | null): string | null {
+  if (!natural || natural.width <= 0 || natural.height <= 0) {
+    return null;
+  }
+
+  const width = Math.max(0, face.bbox.x2 - face.bbox.x1);
+  const height = Math.max(0, face.bbox.y2 - face.bbox.y1);
+  const areaPercent = ((width * height) / (natural.width * natural.height)) * 100;
+
+  if (!Number.isFinite(areaPercent)) {
+    return null;
+  }
+
+  return `${Math.round(areaPercent * 10) / 10}%`;
+}
+
 function getContainedImageRect(container: Size, natural: Size) {
   const containerRatio = container.width / container.height;
   const naturalRatio = natural.width / natural.height;
@@ -95,31 +111,27 @@ function PersonPhotoCard({ photo, index }: { photo: PersonPhoto; index: number }
   return (
     <article className="photo-card">
       <div className="photo-stage" ref={stageRef}>
-        {photo.signedUrl ? (
+        {photo.imageUrl ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               alt={`Фото ${index + 1}`}
               className="photo-thumb photo-thumb-contained"
+              fetchPriority={index < 2 ? "high" : "auto"}
+              loading={index < 4 ? "eager" : "lazy"}
               onLoad={(event) => {
                 setNaturalSize({
                   width: event.currentTarget.naturalWidth,
                   height: event.currentTarget.naturalHeight
                 });
               }}
-              src={photo.signedUrl}
+              src={photo.imageUrl}
             />
             {stageSize && naturalSize ? (
               <div aria-hidden="true" className="face-overlay-layer">
                 {photo.faces.map((face) => {
-                  const confidence = formatConfidence(face.confidence);
-
                   return (
-                    <div className="face-box" key={face.id} style={getFaceStyle(face, stageSize, naturalSize)}>
-                      {confidence ? (
-                        <span className="face-box-label">Лицо {confidence}</span>
-                      ) : null}
-                    </div>
+                    <div className="face-box" key={face.id} style={getFaceStyle(face, stageSize, naturalSize)} />
                   );
                 })}
               </div>
@@ -138,12 +150,50 @@ function PersonPhotoCard({ photo, index }: { photo: PersonPhoto; index: number }
           </span>
         </div>
         <p className="photo-card-path muted">{photo.storagePath}</p>
+        {photo.faces.length > 0 ? (
+          <ul aria-label={`Метрики лиц для фото ${index + 1}`} className="photo-face-metrics">
+            {photo.faces.map((face, faceIndex) => {
+              const confidence = formatConfidence(face.confidence);
+              const area = formatFaceArea(face, naturalSize);
+
+              return (
+                <li className="photo-face-metrics-item" key={face.id}>
+                  <span className="photo-face-metrics-label">Лицо {faceIndex + 1}</span>
+                  {confidence ? (
+                    <span className="photo-face-metric-chip">Confidence {confidence}</span>
+                  ) : null}
+                  {area ? <span className="photo-face-metric-chip">Размер {area} кадра</span> : null}
+                </li>
+              );
+            })}
+          </ul>
+        ) : null}
       </div>
     </article>
   );
 }
 
 export function PersonPhotoGallery({ photos }: PersonPhotoGalleryProps) {
+  useEffect(() => {
+    const preloaders = photos
+      .slice(0, 8)
+      .map((photo) => {
+        if (!photo.imageUrl) {
+          return null;
+        }
+
+        const preloader = new Image();
+        preloader.decoding = "async";
+        preloader.src = photo.imageUrl;
+        return preloader;
+      })
+      .filter(Boolean);
+
+    return () => {
+      preloaders.length = 0;
+    };
+  }, [photos]);
+
   return (
     <section className="photo-grid">
       {photos.map((photo, index) => (
