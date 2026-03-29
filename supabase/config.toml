@@ -15,3 +15,33 @@ port = 54323
 enabled = true
 file_size_limit = "50MiB"
 
+[auth]
+enabled = true
+site_url = "https://photo-sorter-rust.vercel.app"
+additional_redirect_urls = [
+  "http://localhost:3000/**",
+  "https://photo-sorter-rust.vercel.app/**",
+  "https://*-pyfigs-projects.vercel.app/**"
+]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true
+secure_password_change = false
+max_frequency = "1m0s"
+otp_length = 8
+otp_expiry = 3600
+
+[auth.mfa]
+max_enrolled_factors = 10
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+[auth.mfa.phone]
+enroll_enabled = false
+verify_enabled = false
