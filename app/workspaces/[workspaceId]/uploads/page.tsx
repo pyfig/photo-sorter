@@ -43,15 +43,15 @@ export default async function UploadsPage({
         description={
           workspace.isShared
             ? "В этом workspace уже есть предзагруженный upload batch. Можно сразу запустить обработку или добавить свою новую подборку."
-            : "Здесь начинается путь фотографии: загрузка, постановка в очередь и переход к статусу обработки."
+            : "Здесь начинается путь фотографии: загрузка, регистрация в проекте, постановка в очередь и переход к статусу обработки."
         }
       />
 
       <section className="grid cards" style={{ marginBottom: 24 }}>
-        <SummaryCard label="Проект" value={workspace.name} />
-        <SummaryCard label="Загрузки" value={workspace.uploadCount} />
-        <SummaryCard label="Фото в проекте" value={workspace.totalPhotos} />
-        <SummaryCard label="Найдено людей" value={workspace.peopleCount} />
+        <SummaryCard label="Проект" value={workspace.name} hint="Контур, в котором живёт текущая подборка" />
+        <SummaryCard label="Загрузки" value={workspace.uploadCount} hint="Сколько партий уже прошло через этот проект" />
+        <SummaryCard label="Фото в проекте" value={workspace.totalPhotos} hint="Все кадры, уже зарегистрированные в системе" />
+        <SummaryCard label="Найдено людей" value={workspace.peopleCount} hint="Готовые результаты из завершённых запусков" />
       </section>
 
       <div className="grid" style={{ marginBottom: 24 }}>

@@ -110,42 +110,88 @@ export default async function HomePage() {
   return (
     <>
       <PageHeader
-        eyebrow="Панель"
-        title="Откройте готовый набор или создайте свой workspace"
-        description="После входа вам сразу доступен общий набор TechCommunity Fest с уже загруженными фотографиями. Отсюда же можно создать отдельный workspace под свою съёмку."
+        eyebrow="Солнечная навигация"
+        title="Откройте общий архив или соберите свой маршрут обработки"
+        description="Photo Sorter собирает загруженные фотографии, очереди и готовые группы людей в один спокойный центр управления. Общий workspace уже доступен сразу после входа, а отдельный проект можно создать за минуту."
       />
+
+      <section className="hero-band" style={{ marginBottom: 24 }}>
+        <article className="panel panel-highlight">
+          <div className="section-heading">
+            <h2>Что уже готово внутри</h2>
+            <span className="muted">Общий набор, отдельные проекты и понятный путь от загрузки к результату</span>
+          </div>
+          <div className="list-inline hero-ribbon">
+            <span>Проектов: {workspaces.length}</span>
+            <span>Фото: {totals.photos}</span>
+            <span>Активных обработок: {totals.activeJobs}</span>
+            <span>Готовых результатов: {totals.clusters}</span>
+          </div>
+          <p className="muted">
+            Общий набор TechCommunity Fest помогает зайти в систему без пустого экрана, а
+            отдельные workspaces позволяют аккуратно развести клиентские и внутренние
+            съёмки по разным потокам.
+          </p>
+          <div className="actions">
+            {sharedWorkspace ? (
+              <Link className="button" href={`/workspaces/${sharedWorkspace.id}`}>
+                Открыть общий workspace
+              </Link>
+            ) : null}
+            <Link className="button-secondary" href="#create-workspace">
+              Собрать новый workspace
+            </Link>
+          </div>
+        </article>
+
+        <aside className="ecosystem-map" aria-label="Карта потока">
+          <article className="ecosystem-node ecosystem-node-primary">
+            <strong>Общий набор</strong>
+            <p>Предзагруженные фотографии и быстрый вход в рабочий ритм.</p>
+          </article>
+          <article className="ecosystem-node">
+            <strong>Личный проект</strong>
+            <p>Отдельная зона для съёмки клиента, события или архива.</p>
+          </article>
+          <article className="ecosystem-node ecosystem-node-soft">
+            <strong>Готовые люди</strong>
+            <p>Результаты появляются по мере завершения обработки и остаются под рукой.</p>
+          </article>
+        </aside>
+      </section>
 
       <section className="journey-grid" style={{ marginBottom: 24 }}>
         <article className="journey-card">
           <span className="journey-step">1</span>
-          <h2>Откройте готовый набор</h2>
-          <p>Общий workspace уже содержит предзагруженные фотографии и готов к запуску распознавания.</p>
+          <h2>Зайдите через готовый общий набор</h2>
+          <p>Общий workspace уже содержит предзагруженные фотографии и помогает быстро увидеть весь рабочий цикл без пустых состояний.</p>
         </article>
         <article className="journey-card">
           <span className="journey-step">2</span>
-          <h2>Создайте свой workspace</h2>
-          <p>Если нужен отдельный проект под свою съёмку, создайте его одной кнопкой прямо из dashboard.</p>
+          <h2>Разведите съёмки по отдельным зонам</h2>
+          <p>Если нужен самостоятельный поток под клиента или событие, создайте свой workspace одной кнопкой прямо из dashboard.</p>
         </article>
         <article className="journey-card">
           <span className="journey-step">3</span>
-          <h2>Откройте результат</h2>
-          <p>Следите за прогрессом и открывайте готовые группы людей по мере завершения.</p>
+          <h2>Следите за ростом результата</h2>
+          <p>Открывайте прогресс, журнал событий и готовые группы людей по мере завершения обработки.</p>
         </article>
       </section>
 
       <section className="grid cards" style={{ marginBottom: 24 }}>
-        <SummaryCard label="Проекты" value={workspaces.length} hint="Активные рабочие пространства" />
-        <SummaryCard label="Фото" value={totals.photos} hint="Всего загружено во всех проектах" />
-        <SummaryCard label="В работе" value={totals.activeJobs} hint="Обработки, которые ещё не завершились" />
-        <SummaryCard label="Результаты" value={totals.clusters} hint="Готовые группы людей" />
+        <SummaryCard label="Проекты" value={workspaces.length} hint="Рабочие пространства, в которых живут ваши съёмки" />
+        <SummaryCard label="Фото" value={totals.photos} hint="Все кадры, уже сохранённые в системе" />
+        <SummaryCard label="В работе" value={totals.activeJobs} hint="Очереди и запуски, которые ещё двигаются" />
+        <SummaryCard label="Результаты" value={totals.clusters} hint="Готовые группы людей, доступные для просмотра" />
       </section>
 
       <section className="panel" style={{ marginBottom: 24 }}>
         <div className="panel-intro">
-          <h2>Что можно сделать сразу</h2>
+          <h2>Быстрый путь без лишних решений</h2>
           <p className="muted">
-            Готовый demo-workspace уже доступен. Если нужно работать отдельно от общего набора,
-            ниже можно создать новый workspace под конкретную съёмку.
+            Если нужно быстро проверить поток end-to-end, откройте общий workspace. Если
+            нужно изолировать клиентскую или внутреннюю съёмку, сразу создайте новый проект
+            ниже и работайте в отдельной зоне.
           </p>
         </div>
         <div className="actions">
@@ -164,12 +210,16 @@ export default async function HomePage() {
         <section className="grid">
           <EmptyState
             title="Пока нет ни одного проекта"
-            description="Создайте первый проект, чтобы загрузить съёмку, запустить обработку и открыть результат в одном месте."
+            description="Создайте первый проект, чтобы загрузить съёмку, запустить обработку и открыть результат в одном аккуратном контуре."
           />
           <WorkspaceOnboardingForm />
         </section>
       ) : (
         <section className="grid">
+          <div className="section-heading">
+            <h2>Ваши пространства обработки</h2>
+            <span className="muted">Каждая карточка показывает текущий ритм проекта и следующий удобный шаг</span>
+          </div>
           {workspaces.map((workspace) => {
             const state = describeWorkspaceState(workspace);
 
@@ -213,7 +263,30 @@ export default async function HomePage() {
         </section>
       )}
 
-      <section className="grid" id="create-workspace" style={{ marginTop: 24 }}>
+      <section className="split-layout" id="create-workspace" style={{ marginTop: 24 }}>
+        <section className="panel panel-highlight">
+          <div className="panel-intro">
+            <h2>Новый рабочий контур</h2>
+            <p className="muted">
+              Отдельный workspace помогает не смешивать архивы, очереди и результаты между
+              разными клиентами, событиями и внутренними съёмками.
+            </p>
+          </div>
+          <div className="check-list">
+            <article className="check-card">
+              <strong>Изоляция данных</strong>
+              <p>Свои загрузки, свои обработки и свои результаты в пределах одного проекта.</p>
+            </article>
+            <article className="check-card">
+              <strong>Чёткий адрес</strong>
+              <p>Понятный slug помогает быстро ориентироваться и делиться ссылками внутри команды.</p>
+            </article>
+            <article className="check-card">
+              <strong>Простой старт</strong>
+              <p>Создание проекта не требует админ-подготовки и не ломает общий демонстрационный набор.</p>
+            </article>
+          </div>
+        </section>
         <WorkspaceOnboardingForm />
       </section>
     </>

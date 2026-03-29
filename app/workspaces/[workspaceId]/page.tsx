@@ -25,25 +25,25 @@ export default async function WorkspacePage({
       <PageHeader
         backHref="/"
         backLabel="Ко всем проектам"
-        eyebrow={workspace.isShared ? "Готовый workspace" : "Проект"}
+        eyebrow={workspace.isShared ? "Общий workspace" : "Проект"}
         title={workspace.name}
         description={
           workspace.isShared
-            ? "В этом workspace уже лежит предзагруженный набор фотографий. Откройте загрузки, чтобы запустить распознавание на готовом датасете или добавить новую съёмку."
-            : "Здесь видно, сколько фотографий уже загружено, какие результаты готовы и что делать дальше."
+            ? "В этом workspace уже лежит предзагруженный набор фотографий. Откройте загрузки, чтобы запустить обработку на готовом датасете или добавить новую съёмку."
+            : "Здесь видно, сколько фотографий уже загружено, какие результаты готовы и куда двигаться дальше по этому проекту."
         }
       />
 
       <section className="grid cards" style={{ marginBottom: 24 }}>
-        <SummaryCard label="Фото" value={workspace.totalPhotos} />
-        <SummaryCard label="Люди" value={workspace.peopleCount} />
-        <SummaryCard label="Загрузки" value={workspace.uploadCount} />
-        <SummaryCard label="Адрес проекта" value={`/${workspace.slug}`} />
+        <SummaryCard label="Фото" value={workspace.totalPhotos} hint="Кадры, уже живущие в этом пространстве" />
+        <SummaryCard label="Люди" value={workspace.peopleCount} hint="Готовые группы после завершённых запусков" />
+        <SummaryCard label="Загрузки" value={workspace.uploadCount} hint="Все партии, зарегистрированные в проекте" />
+        <SummaryCard label="Адрес проекта" value={`/${workspace.slug}`} hint="Постоянный путь для навигации внутри системы" />
       </section>
 
       <section className="panel" style={{ marginBottom: 24 }}>
         <div className="panel-intro">
-          <h2>Что можно сделать дальше</h2>
+          <h2>Куда двигаться дальше</h2>
           <p className="muted">
             {workspace.isShared
               ? "В предзагруженном наборе можно сразу открыть загрузки и запустить обработку по уже сохранённым фотографиям."
@@ -68,7 +68,7 @@ export default async function WorkspacePage({
       <section className="panel" style={{ marginBottom: 24 }}>
         <div className="section-heading">
           <h2>Последние результаты</h2>
-          <span className="muted">Готовые группы людей, которые уже можно открыть</span>
+          <span className="muted">Готовые группы людей, которые уже можно открыть и проверить</span>
         </div>
 
         {workspace.recentClusters.length === 0 ? (

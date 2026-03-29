@@ -52,7 +52,7 @@ export function LoginForm({ nextPath, message }: LoginFormProps) {
       setError(
         submitError instanceof Error
           ? submitError.message
-          : "Не удалось отправить magic link"
+          : "Не удалось отправить ссылку для входа"
       );
     } finally {
       setIsSubmitting(false);
@@ -61,6 +61,14 @@ export function LoginForm({ nextPath, message }: LoginFormProps) {
 
   return (
     <section className="panel auth-panel">
+      <div className="panel-intro">
+        <h2>Вход по ссылке из письма</h2>
+        <p className="muted">
+          Укажите рабочий email. Мы отправим безопасную ссылку, пароль не нужен, а
+          состояние проекта сохранится в том же спокойном рабочем контуре.
+        </p>
+      </div>
+
       <form className="form-grid" onSubmit={handleSubmit}>
         <label className="field">
           <span>Email</span>
@@ -77,13 +85,20 @@ export function LoginForm({ nextPath, message }: LoginFormProps) {
 
         <div className="actions">
           <button className="button" disabled={isSubmitting} type="submit">
-            {isSubmitting ? "Отправка..." : "Получить magic link"}
+            {isSubmitting ? "Отправляем ссылку..." : "Отправить ссылку для входа"}
           </button>
         </div>
       </form>
 
+      <p className="helper-copy">
+        После входа откроется общий workspace и список ваших проектов, чтобы можно было
+        сразу загрузить новую подборку или открыть готовый результат.
+      </p>
+
       {sentTo ? (
-        <p className="notice success">Письмо отправлено на {sentTo}. Откройте ссылку из письма.</p>
+        <p className="notice success">
+          Письмо уже в пути на {sentTo}. Откройте ссылку из письма, чтобы продолжить.
+        </p>
       ) : null}
       {error ? <p className="notice error">{error}</p> : null}
     </section>

@@ -18,7 +18,8 @@ export function WorkspaceOnboardingForm() {
       <h2>Создайте новый workspace</h2>
       <p className="muted">
         Общий набор уже доступен сразу после входа. Здесь можно создать отдельный workspace
-        под клиента, событие или конкретную фотосъёмку.
+        под клиента, событие или конкретную фотосъёмку, чтобы разнести потоки обработки по
+        понятным рабочим зонам.
       </p>
 
       <form action={action} className="form-grid">
@@ -44,7 +45,7 @@ export function WorkspaceOnboardingForm() {
         </label>
 
         <p className="helper-copy">
-          Если оставить короткий адрес пустым, мы создадим его автоматически по названию.
+          Если оставить короткий адрес пустым, он появится автоматически по названию проекта.
         </p>
 
         <div className="actions">

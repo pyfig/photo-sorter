@@ -1,9 +1,11 @@
 "use client";
 
 import { startTransition, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { shortId } from "@/lib/utils";
 
 interface UploadFlowProps {
   workspaceId: string;
@@ -16,6 +18,29 @@ type UploadStep =
   | "registering-files"
   | "creating-job"
   | "completed";
+
+const flowSteps = [
+  {
+    key: "creating-upload",
+    title: "Подготовить загрузку",
+    description: "Создаём запись и подготавливаем спокойный контейнер для снимков."
+  },
+  {
+    key: "uploading-files",
+    title: "Передать фотографии",
+    description: "Передаём файлы в хранилище и следим, чтобы маршрут не оборвался."
+  },
+  {
+    key: "registering-files",
+    title: "Сохранить в проект",
+    description: "Фиксируем фото в проекте, чтобы они попали в очередь обработки."
+  },
+  {
+    key: "creating-job",
+    title: "Запустить обработку",
+    description: "Создаём задачу и сразу переводим вас к её статусу."
+  }
+] as const;
 
 function sanitizeFileName(fileName: string): string {
   return fileName
@@ -58,7 +83,7 @@ export function UploadFlow({ workspaceId }: UploadFlowProps) {
 
     try {
       setStep("creating-upload");
-      setStepMessage("Создаю upload batch...");
+      setStepMessage("Подготавливаем новую загрузку...");
 
       const uploadResponse = await fetch(
         `/api/workspaces/${workspaceId}/uploads`,
@@ -78,12 +103,12 @@ export function UploadFlow({ workspaceId }: UploadFlowProps) {
       };
 
       if (!uploadResponse.ok || !uploadPayload.upload || !uploadPayload.storagePrefix) {
-        throw new Error(uploadPayload.error ?? "Не удалось создать upload batch");
+        throw new Error(uploadPayload.error ?? "Не удалось подготовить загрузку");
       }
 
       setUploadId(uploadPayload.upload.id);
       setStep("uploading-files");
-      setStepMessage("Загружаю файлы в Supabase Storage...");
+      setStepMessage("Передаём фотографии в хранилище...");
 
       const supabase = createSupabaseBrowserClient();
       const registeredFiles: Array<{ storagePath: string }> = [];
@@ -105,11 +130,11 @@ export function UploadFlow({ workspaceId }: UploadFlowProps) {
         }
 
         registeredFiles.push({ storagePath });
-        setStepMessage(`Загружено ${index + 1} из ${files.length} файлов...`);
+        setStepMessage(`Загружено ${index + 1} из ${files.length} фото.`);
       }
 
       setStep("registering-files");
-      setStepMessage("Регистрирую файлы в базе...");
+      setStepMessage("Добавляем фотографии в проект...");
 
       const registerResponse = await fetch(
         `/api/workspaces/${workspaceId}/uploads/${uploadPayload.upload.id}/photos`,
@@ -129,7 +154,7 @@ export function UploadFlow({ workspaceId }: UploadFlowProps) {
       }
 
       setStep("creating-job");
-      setStepMessage("Создаю processing job...");
+      setStepMessage("Запускаем обработку...");
 
       const jobResponse = await fetch(`/api/workspaces/${workspaceId}/jobs`, {
         method: "POST",
@@ -145,12 +170,34 @@ export function UploadFlow({ workspaceId }: UploadFlowProps) {
       };
 
       if (!jobResponse.ok || !jobPayload.job) {
-        throw new Error(jobPayload.error ?? "Не удалось создать processing job");
+        throw new Error(jobPayload.error ?? "Не удалось запустить обработку");
+      }
+
+      let completionMessage = "Фотографии загружены. Обработка уже стоит в очереди.";
+      try {
+        const healthResponse = await fetch("/api/health", { cache: "no-store" });
+        const healthPayload = (await healthResponse.json()) as {
+          checks?: {
+            workerRuntime?: {
+              status?: string;
+              error?: string | null;
+            };
+          };
+        };
+        const workerRuntime = healthPayload.checks?.workerRuntime;
+
+        if (workerRuntime?.status !== "ok") {
+          completionMessage = workerRuntime?.error
+            ? `Фотографии загружены, но worker runtime недоступен: ${workerRuntime.error}`
+            : "Фотографии загружены, но worker runtime пока не отвечает. Job останется в очереди, пока не появится consumer.";
+        }
+      } catch {
+        // Health-check here is advisory only; upload flow itself is already complete.
       }
 
       setJobId(jobPayload.job.id);
       setStep("completed");
-      setStepMessage("Upload завершен, job поставлен в очередь.");
+      setStepMessage(completionMessage);
       startTransition(() => {
         router.refresh();
       });
@@ -160,27 +207,62 @@ export function UploadFlow({ workspaceId }: UploadFlowProps) {
       setError(
         uploadError instanceof Error
           ? uploadError.message
-          : "Не удалось завершить upload flow"
+          : "Не удалось завершить загрузку"
       );
     }
   }
 
+  const currentStepIndex =
+    step === "idle"
+      ? -1
+      : step === "completed"
+        ? flowSteps.length
+        : flowSteps.findIndex((item) => item.key === step);
+
   return (
-    <section className="panel">
-      <h2>Новый upload batch</h2>
+    <section className="panel upload-flow-panel">
+      <div className="panel-intro">
+        <h2>Новая загрузка</h2>
+        <p className="muted">
+          Добавьте подборку фотографий. Сервис сам зарегистрирует файлы, подготовит очередь
+          и переведёт вас к статусу обработки без лишних ручных шагов.
+        </p>
+      </div>
+
+      <div className="progress-steps" aria-label="Шаги загрузки">
+        {flowSteps.map((flowStep, index) => {
+          const state =
+            currentStepIndex > index
+              ? "done"
+              : currentStepIndex === index
+                ? "active"
+                : "pending";
+
+          return (
+            <article className={`progress-step ${state}`} key={flowStep.key}>
+              <span className="progress-step-indicator">{index + 1}</span>
+              <div>
+                <strong>{flowStep.title}</strong>
+                <p className="muted">{flowStep.description}</p>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+
       <div className="form-grid">
         <label className="field">
-          <span>Название батча</span>
+          <span>Название загрузки</span>
           <input
             onChange={(event) => setBatchName(event.target.value)}
-            placeholder="conference-day-1"
+            placeholder="Съёмка 1 августа"
             type="text"
             value={batchName}
           />
         </label>
 
         <label className="field">
-          <span>Файлы</span>
+          <span>Фотографии</span>
           <input
             accept="image/jpeg,image/png"
             multiple
@@ -191,23 +273,29 @@ export function UploadFlow({ workspaceId }: UploadFlowProps) {
       </div>
 
       <div className="list-inline" style={{ marginBottom: 16 }}>
-        <span>Выбрано файлов: {files.length}</span>
-        {uploadId ? <span>upload: {uploadId}</span> : null}
+        <span>Выбрано фото: {files.length}</span>
+        {uploadId ? <span>Загрузка #{shortId(uploadId)}</span> : null}
       </div>
+
+      <p className="helper-copy">
+        Поддерживаются JPEG и PNG. После отправки вы сразу увидите статус обработки.
+      </p>
 
       <div className="actions">
         <button className="button" disabled={!canSubmit} onClick={handleUpload} type="button">
-          {step === "idle" ? "Загрузить и запустить job" : "В работе..."}
+          {step === "idle" ? "Загрузить фото и начать обработку" : "Выполняем шаги..."}
         </button>
       </div>
 
-      {stepMessage ? <p className="notice success">{stepMessage}</p> : null}
+      {stepMessage ? (
+        <p className={`notice ${step === "completed" ? "success" : "info"}`}>{stepMessage}</p>
+      ) : null}
       {error ? <p className="notice error">{error}</p> : null}
       {jobId ? (
         <div className="actions">
-          <a className="button-secondary" href={`/workspaces/${workspaceId}/jobs/${jobId}`}>
-            Открыть job
-          </a>
+          <Link className="button-secondary" href={`/workspaces/${workspaceId}/jobs/${jobId}`}>
+            Открыть статус обработки
+          </Link>
         </div>
       ) : null}
     </section>

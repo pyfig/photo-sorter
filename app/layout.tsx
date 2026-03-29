@@ -1,13 +1,20 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Noto_Serif } from "next/font/google";
+import { Noto_Sans, Noto_Serif } from "next/font/google";
 
 import { signOutAction } from "@/app/actions";
+import { BrandMark } from "@/components/brand-mark";
 import { hasRequiredWebEnv } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 import "./globals.css";
+
+const notoSans = Noto_Sans({
+  subsets: ["latin", "cyrillic"],
+  display: "swap",
+  variable: "--font-sans"
+});
 
 const notoSerif = Noto_Serif({
   subsets: ["latin", "cyrillic"],
@@ -16,8 +23,12 @@ const notoSerif = Noto_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "Photo Sorter",
-  description: "Web-first photo sorting by faces with Supabase and Vercel."
+  title: {
+    default: "Photo Sorter",
+    template: "%s | Photo Sorter"
+  },
+  description:
+    "Photo Sorter собирает загрузки, очереди обработки и готовые результаты в единый спокойный интерфейс для работы с большими фотосъёмками."
 };
 
 export default async function RootLayout({
@@ -37,30 +48,43 @@ export default async function RootLayout({
 
   return (
     <html lang="ru">
-      <body className={notoSerif.variable}>
+      <body className={`${notoSans.variable} ${notoSerif.variable}`}>
         <main>
           <div className="shell">
             <header className="topbar">
               <Link className="brand" href="/">
-                Photo Sorter
+                <span className="brand-mark-shell">
+                  <BrandMark className="brand-mark" />
+                </span>
+                <span className="brand-copy-block">
+                  <span className="brand-title-row">
+                    <span className="brand-title">Photo Sorter</span>
+                    <span className="brand-badge">solar archive</span>
+                  </span>
+                  <span className="brand-copy">Живой архив фотосъёмок и маршрутов обработки</span>
+                </span>
               </Link>
-              <nav>
-                <Link href="/">Dashboard</Link>
+              <nav className="topnav">
+                <Link className="nav-link" href="/">
+                  Проекты
+                </Link>
                 {userEmail ? (
                   <>
-                    <span className="muted">{userEmail}</span>
+                    <span className="user-pill">{userEmail}</span>
                     <form action={signOutAction}>
-                      <button className="link-button" type="submit">
-                        Sign out
+                      <button className="link-button nav-link nav-link-ghost" type="submit">
+                        Выйти
                       </button>
                     </form>
                   </>
                 ) : (
-                  <Link href="/login">Login</Link>
+                  <Link className="nav-link" href="/login">
+                    Войти
+                  </Link>
                 )}
               </nav>
             </header>
-            {children}
+            <div className="content-shell">{children}</div>
           </div>
         </main>
       </body>

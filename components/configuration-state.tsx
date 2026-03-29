@@ -11,10 +11,11 @@ export function ConfigurationState({
 }: ConfigurationStateProps) {
   return (
     <section className="empty-state">
+      <span className="eyebrow">Настройка</span>
       <h2>{title}</h2>
-      <p>{description}</p>
+      <p className="muted">{description}</p>
       <div className="panel-inline">
-        <strong>Missing env</strong>
+        <strong>Что нужно настроить</strong>
         <ul className="code-list">
           {missingKeys.map((key) => (
             <li key={key}>
