@@ -5,7 +5,7 @@ import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { SummaryCard } from "@/components/summary-card";
 import { StatusBadge } from "@/components/status-badge";
-import { UploadFlow } from "@/components/upload-flow";
+import { UploadFlow } from "@/components/UploadFlow";
 import { UploadJobLauncher } from "@/components/upload-job-launcher";
 import { getWorkspaceOverview, listUploadsForWorkspace } from "@/lib/data";
 import type { UploadSummary } from "@/lib/types";
