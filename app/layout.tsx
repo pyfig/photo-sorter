@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Noto_Sans, Noto_Serif } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 
 import { signOutAction } from "@/app/actions";
 import { BrandMark } from "@/components/brand-mark";
@@ -86,6 +87,7 @@ export default async function RootLayout({
             <div className="content-shell">{children}</div>
           </div>
         </main>
+        <Analytics />
       </body>
     </html>
   );
